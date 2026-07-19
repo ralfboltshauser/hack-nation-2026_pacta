@@ -6,99 +6,103 @@
 
 <p align="center"><strong>One request in. A live market out.</strong></p>
 
+<p align="center"><sub>ElevenLabs “The Negotiator” challenge submission</sub></p>
+
 <p align="center">
-  AI-native negotiation infrastructure that turns one confirmed customer request into parallel supplier conversations, comparable offers, verified leverage, and an explicit commitment.
+  Pacta turns one confirmed customer request into parallel supplier negotiations, comparable offers, verified leverage, and a deliberate final commitment.
 </p>
 
 <p align="center">
-  <a href="https://pacta.openexp.dev">Live app</a> ·
-  <a href="presentations/pacta-case-pitch/README.md">Pitch deck</a> ·
-  <a href="docs/call-flow.md">System flow</a> ·
-  <a href="docs/milestones/evidence/2026-07-19-implementation-checkpoint.md">Evidence checkpoint</a>
+  <a href="https://pacta.openexp.dev"><strong>Open the live app</strong></a> ·
+  <a href="presentations/pacta-case-pitch/README.md">View the pitch</a> ·
+  <a href="docs/milestones/evidence/2026-07-19-implementation-checkpoint.md">Review the evidence</a>
 </p>
 
-![Three carrier negotiations coordinated by Pacta](presentations/pacta-case-pitch/renders/slide-06.png)
+![Three supplier negotiations coordinated by Pacta](presentations/pacta-case-pitch/renders/slide-06.png)
 
-## What Pacta does
+## Pacta in 30 seconds
 
-Most sourcing workflows repeat the same job over the phone, one supplier at a time. Pacta creates one shared negotiation instead:
+Getting several quotes still means repeating the same information on separate calls, taking inconsistent notes, and comparing offers that may not include the same terms.
 
-1. **Confirm once.** The customer supplies structured requirements and explicitly confirms one immutable job revision.
-2. **Call in parallel.** Independent ElevenLabs supplier agents receive the same confirmed facts and negotiate concurrently.
-3. **Share verified leverage.** Typed tool calls commit comparable offers to shared state; each agent receives only evidence-backed updates it is allowed to use.
-4. **Close deliberately.** The customer selects an offer, the chosen supplier confirms the exact terms, and every other conversation receives a terminal outcome.
+Pacta replaces that sequential work with one coordinated negotiation:
 
-The engine is configuration-driven. Freight brokerage is the primary demo, but job fields, offer schemas, negotiation policy, terminology, and recommendation rules live in versioned use-case configuration rather than the runtime.
+1. The customer describes the job once.
+2. Pacta confirms the exact requirements before contacting anyone.
+3. Independent ElevenLabs agents negotiate with suppliers in parallel.
+4. Every verified offer enters one shared, structured market state.
+5. Suppliers can respond to real competing leverage without seeing private identities.
+6. The customer chooses; the selected supplier must explicitly confirm the final terms.
 
-## The coordination model
+The result is faster sourcing without sacrificing comparability, auditability, or customer control.
 
-Pacta is not a group call and the agents do not message each other directly. Every conversation is independent. Short, authenticated tool calls read or mutate one authoritative negotiation state between speaking turns.
+Every Pacta use case preserves this contract: gather prices, negotiate, and return an evidence-backed report. The vertical changes; the three beats do not.
+
+Pacta is not a group call. Each supplier has an independent conversation, while PostgreSQL holds the shared, authoritative negotiation state.
+
+## Why ElevenLabs
+
+ElevenLabs is the conversation layer, not a voice wrapper around a form.
+
+- One live agent represents the customer-side intake and decision flow.
+- Independent voice agents handle supplier negotiations concurrently.
+- Typed ElevenLabs tools turn spoken milestones into validated state transitions.
+- Fresh shared context returns to an agent at natural turn boundaries.
+- Voice remains conversational while business-critical facts remain structured and auditable.
+
+This separation is important: the model manages the conversation, but it cannot silently invent an authoritative offer or commitment.
+
+## What the jury can evaluate
+
+| Surface                                                                                 | What to look for                                                                       |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [Live application](https://pacta.openexp.dev)                                           | Customer intake, confirmation, session launch, and the live/replay negotiation console |
+| [Pitch deck](presentations/pacta-case-pitch/)                                           | The complete 3–5 minute product story and demo narrative                               |
+| [Evidence checkpoint](docs/milestones/evidence/2026-07-19-implementation-checkpoint.md) | Sanitized verification results and remaining gaps                                      |
+| [Shared-state proof](experiments/elevenlabs/shared-state-negotiation/README.md)         | Two simultaneous ElevenLabs conversations exchanging verified negotiation facts        |
+| [Use-case configuration](config/use-cases/)                                             | The same engine expressed for freight brokerage and contractor bids                    |
+
+### Implemented today
+
+- Customer chat intake with PDF and image support
+- Explicit confirmation and immutable job revisions
+- Parallel ElevenLabs supplier conversation orchestration
+- Typed job, offer, market-state, selection, and commitment tools
+- Comparable-offer validation and configuration-driven recommendations
+- PostgreSQL event history, evidence, access control, and private artifact storage
+- Live Supabase Realtime projection with deterministic event replay
+- Fail-closed outbound-call controls and idempotent provider handling
+- Unit, integration, production-build, and Playwright coverage
+
+### Honest MVP boundary
+
+The current customer experience uses ElevenLabs text chat; supplier conversations use ElevenLabs-native voice calls. Shared facts move at tool-call and conversational turn boundaries—not in the middle of an utterance. The customer voice call and Enterprise realtime transcript stream in the architecture visual below are future-facing. See the [dated evidence checkpoint](docs/milestones/evidence/2026-07-19-implementation-checkpoint.md) for verified results and remaining gaps.
+
+## How it works
 
 ![Target architecture for simultaneous calls and shared negotiation state](presentations/pacta-case-pitch/assets/architecture-shared-live-state-v1.png)
 
-> **Target architecture.** The current MVP uses an ElevenLabs text chat for the customer and ElevenLabs-native outbound supplier calls. The diagram's customer voice call and dotted Enterprise realtime transcript stream are future-facing. Twilio represents the phone transport layer; the current application does not call Twilio's REST API directly.
+| Layer                  | Responsibility                                                                   |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| ElevenLabs             | Customer and supplier conversations, voice execution, and typed tool calls       |
+| Next.js on Vercel      | Authentication, orchestration, validation, and deterministic next actions        |
+| Supabase/PostgreSQL    | Immutable revisions, ordered events, offers, evidence, decisions, and call state |
+| Use-case configuration | Job fields, offer schemas, terminology, negotiation rules, and recommendations   |
 
-### Current runtime contract
+PostgreSQL is authoritative. Supabase Realtime projects committed events to the interface; clients repair missing or out-of-order delivery by replaying the durable event history.
 
-| Boundary      | What is true today                                                                                                                        |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Customer      | One ElevenLabs `text_chat` conversation for typed intake, PDF/image input, confirmation, review, and selection.                           |
-| Suppliers     | One independent ElevenLabs voice conversation per supplier, launched in parallel only after the job is confirmed.                         |
-| Orchestration | Short Next.js endpoints on Vercel validate milestones, return deterministic next actions, and never stay open for the duration of a call. |
-| Shared state  | Supabase/PostgreSQL owns immutable revisions, ordered events, evidence, offers, comparisons, selection, and commitment state.             |
-| Live context  | Supplier agents call `get_negotiation_state` at a natural or silence-triggered turn and receive only verified, comparable leverage.       |
-| Telephony     | ElevenLabs owns call execution. Direct Twilio credentials are optional and unused by the native MVP path.                                 |
-| Realtime UI   | Supabase Realtime projects committed events to the interface; it is not the source of truth.                                              |
+## Built for more than freight
 
-“Realtime” currently means **tool-call and turn boundaries**. Pacta does not inject text mid-utterance, force an idle agent to speak, or treat raw transcript text as an authoritative offer.
+Freight brokerage is the primary demonstration, not a hard-coded domain. Pacta separates the stable negotiation engine from versioned market configuration.
 
-## End-to-end flow
+Changing a use case can redefine:
 
-```text
-Customer intake
-      ↓ explicit confirmation
-Immutable job revision
-      ↓ parallel launch
-Supplier A ─┐
-Supplier B ─┼─→ typed milestones → shared negotiation state
-Supplier C ─┘                         ↓
-      ↑ verified leverage ← comparison + policy
-      ↓
-Customer selection → supplier commitment → closeout
-```
+- what the customer must specify;
+- what makes an offer complete and comparable;
+- which terms an agent may negotiate;
+- how recommendations are ranked; and
+- which language appears in the customer and supplier experiences.
 
-The important boundaries are intentional:
-
-- supplier outreach cannot start before explicit customer confirmation;
-- every supplier receives the same immutable job revision;
-- an offer becomes leverage only after server-side validation and comparability checks;
-- customer selection authorizes a commitment attempt—it is not proof of supplier acceptance; and
-- PostgreSQL remains authoritative even when webhooks retry or realtime packets arrive out of order.
-
-The full lifecycle, failure paths, and event semantics live in [`docs/call-flow.md`](docs/call-flow.md).
-
-## What is implemented
-
-- Next.js 16 application with a mascot-centered live/replay session console
-- Native ElevenLabs customer and supplier agents with typed milestone/state tools
-- Parallel supplier conversation orchestration with a fail-closed telephony switch
-- Config-driven job, offer, clarification, negotiation, and recommendation contracts
-- Drizzle/PostgreSQL persistence with immutable revisions, ordered events, evidence, RLS, and private Supabase Storage
-- Customer PDF/image intake with durable artifact hashing and private storage
-- Idempotent webhook handling, post-call reconciliation, and explicit selection/commitment separation
-- Unit, integration, build, and Playwright browser coverage
-
-### Evidence status
-
-| Verified                                                           | Still unproven or future-facing                           |
-| ------------------------------------------------------------------ | --------------------------------------------------------- |
-| Database migrations, RLS membership, and private artifact access   | Complete deployed customer file turn through the provider |
-| Typed job, offer, state, selection, and commitment transitions     | Full safe customer-plus-three-supplier provider run       |
-| Cross-session leverage between two active ElevenLabs conversations | One then three real outbound PSTN supplier calls          |
-| Idempotent retries and fail-closed outbound calling                | Real-call behavior of `skip_turn` and `end_call`          |
-| Production build, health/readiness, and disarmed deployment        | Enterprise realtime transcript event integration          |
-
-The dated, sanitized proof record is [`docs/milestones/evidence/2026-07-19-implementation-checkpoint.md`](docs/milestones/evidence/2026-07-19-implementation-checkpoint.md). It contains no credentials, phone numbers, raw transcripts, or customer documents.
+The repository includes freight brokerage and contractor-bid configurations as concrete examples.
 
 ## Run locally
 
@@ -107,28 +111,32 @@ The dated, sanitized proof record is [`docs/milestones/evidence/2026-07-19-imple
 - Node.js 24
 - pnpm 11.13.1
 - PostgreSQL 17 or a Supabase project
-- ElevenLabs credentials only when exercising provider-backed conversations
+- ElevenLabs credentials only for provider-backed conversations
 
 ### Setup
 
 ```bash
 pnpm install --frozen-lockfile
 cp .env.example .env
-```
-
-Fill the required database and Supabase values in `.env`, then validate configuration and apply migrations:
-
-```bash
 pnpm config:check
 pnpm db:migrate
 pnpm dev
 ```
 
-The web app starts at `http://localhost:3000` by default.
+Open `http://localhost:3000`.
+
+Outbound calls are disabled unless this exact value is set:
+
+```dotenv
+PACTA_OUTBOUND_CALLS_ENABLED=true
+```
+
+Keep it `false` during normal development.
 
 ### Verify
 
 ```bash
+pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
@@ -136,43 +144,32 @@ pnpm build
 pnpm test:e2e
 ```
 
-### Telephony safety
+Database integration tests run when `TEST_DATABASE_URL` is available. Provider-backed experiments remain opt-in so routine verification cannot spend credits or mutate remote agents.
 
-Outbound calls are disabled unless this exact value is present:
+## Repository guide
 
-```dotenv
-PACTA_OUTBOUND_CALLS_ENABLED=true
-```
+| Path                                                                 | Purpose                                                               |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| [`apps/web/`](apps/web/)                                             | Deployable Next.js product, APIs, orchestration, and webhooks         |
+| [`packages/core/`](packages/core/)                                   | Negotiation reducer, events, comparison logic, and shared types       |
+| [`packages/db/`](packages/db/)                                       | Drizzle schema, migrations, persistence, and integration tests        |
+| [`packages/elevenlabs/`](packages/elevenlabs/)                       | ElevenLabs contracts, runtime, client, SSE, and webhook normalization |
+| [`packages/use-case-config/`](packages/use-case-config/)             | Versioned configuration schema, compiler, planner, and fixtures       |
+| [`config/use-cases/`](config/use-cases/)                             | Freight and contractor-bid behavior definitions                       |
+| [`docs/`](docs/)                                                     | Architecture, decisions, investigations, and verification evidence    |
+| [`experiments/`](experiments/)                                       | Opt-in provider proofs with explicit pass/fail criteria               |
+| [`presentations/pacta-case-pitch/`](presentations/pacta-case-pitch/) | Standalone challenge pitch and generated visuals                      |
+| [`mascot/`](mascot/)                                                 | Blender source, browser viewer, motion, audio, and visual evidence    |
 
-Keep it unset or `false` during normal development. The safe E2E path uses the private supplier agent in `text_only` mode and creates no outbound call request:
+All JavaScript projects share one pnpm workspace and one root lockfile.
 
-```bash
-pnpm e2e:safe
-```
+## Deeper documentation
 
-## Repository map
-
-| Path                                                                 | Purpose                                                                    |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| [`apps/web/`](apps/web/)                                             | Next.js product UI, API routes, orchestration, and provider webhooks       |
-| [`packages/core/`](packages/core/)                                   | Domain reducer, comparison logic, events, and shared types                 |
-| [`packages/db/`](packages/db/)                                       | Drizzle schema, migrations, persistence, and integration tests             |
-| [`packages/elevenlabs/`](packages/elevenlabs/)                       | ElevenLabs contracts, client, runtime, SSE, and webhook handling           |
-| [`packages/use-case-config/`](packages/use-case-config/)             | Versioned domain configuration compiler and fixtures                       |
-| [`config/use-cases/`](config/use-cases/)                             | Freight and contractor configuration examples                              |
-| [`docs/`](docs/)                                                     | Architecture, decisions, investigations, evidence, and implementation plan |
-| [`experiments/`](experiments/)                                       | Narrow provider proofs with explicit pass/fail criteria                    |
-| [`presentations/pacta-case-pitch/`](presentations/pacta-case-pitch/) | Standalone 3–5 minute pitch deck and generated visuals                     |
-| [`mascot/`](mascot/)                                                 | Editable Blender character, web viewer, motion, audio, and renders         |
-| [`resources/`](resources/)                                           | Original challenge artifacts, verbatim notes, and checksums                |
-
-## Read next
-
-- [`docs/call-flow.md`](docs/call-flow.md) — canonical product lifecycle and invariants
-- [`docs/decisions/0002-native-elevenlabs-milestone-tools.md`](docs/decisions/0002-native-elevenlabs-milestone-tools.md) — accepted native agent/tool architecture
-- [`docs/architecture/database-schema.md`](docs/architecture/database-schema.md) — authoritative state and persistence model
-- [`docs/architecture/use-case-configuration.md`](docs/architecture/use-case-configuration.md) — domain-neutral configuration contract
-- [`docs/implementation-plan.md`](docs/implementation-plan.md) — verified and pending milestones
+- [Canonical product and call flow](docs/call-flow.md)
+- [Architecture decision: native ElevenLabs milestone tools](docs/decisions/0002-native-elevenlabs-milestone-tools.md)
+- [Database and authoritative-state model](docs/architecture/database-schema.md)
+- [Use-case configuration contract](docs/architecture/use-case-configuration.md)
+- [Implementation status and remaining milestones](docs/implementation-plan.md)
 
 ## Pitch deck
 
@@ -180,4 +177,4 @@ pnpm e2e:safe
 python3 presentations/pacta-case-pitch/serve.py
 ```
 
-Open `http://127.0.0.1:4173/`. The deck has ten slides, presenter notes (`N`), keyboard navigation, and an explicit evidence warning wherever an exchange is still illustrative.
+Open `http://127.0.0.1:4173/`. Use the arrow keys to navigate and press `N` for presenter notes.
