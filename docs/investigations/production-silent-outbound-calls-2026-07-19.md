@@ -57,8 +57,14 @@ The visible failure was a silent connected call. The earliest causal fault was s
 3. **The configured TTS voice was missing.** Disproved: provider agent readback includes a TTS voice and model.
 4. **Pacta's model or webhook failed before speech.** Disproved as the earliest fault: neither was invoked because text-only mode produced no audio turn.
 
-## Fix and remaining verification
+## Fix and repeated production trace
 
 Outbound initiation now explicitly sends `conversation_config_override.conversation.text_only=false`. Browser chat remains text-only, and the provider agent default is unchanged. Regression coverage asserts voice mode for both native-tool and Custom LLM outbound calls while preserving the native authority-field boundary.
 
-A new real call must verify response audio, user audio/ASR, model generation, and the post-call transcript. Those edges remain unknown until that trace completes.
+Commit `634053c` was deployed to production and readiness remained healthy and armed. One bounded verification call was then placed to the latest demo destination:
+
+- Pacta session `9d781191-aa35-416d-850d-ae11845faad0` and ElevenLabs conversation `conv_2801kxxbt8w9faat8t72war0psf0` were created successfully.
+- ElevenLabs reported `text_only=false`, 3.905 seconds of TTS output, 71 TTS characters, no provider error, and the configured first message in the transcript.
+- Twilio reported `completed`, `outbound-api`, and a four-second connection from 14:17:43 to 14:17:47 UTC.
+- The destination user explicitly confirmed hearing Pacta. This verifies the repaired TTS-to-phone edge.
+- The call ended before user speech was captured, so microphone audio, ASR, and a subsequent model response remain unverified rather than assumed working.
