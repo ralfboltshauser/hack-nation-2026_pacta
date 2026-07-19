@@ -51,9 +51,9 @@ ElevenLabs is the conversation layer, not a voice wrapper around a form.
 
 This separation is important: the model manages the conversation, but it cannot silently invent an authoritative offer or commitment.
 
-## What the jury can evaluate
+## Explore Pacta
 
-| Surface                                                                                 | What to look for                                                                       |
+| Surface                                                                                 | What it includes                                                                       |
 | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | [Live application](https://pacta.openexp.dev)                                           | Customer intake, confirmation, session launch, and the live/replay negotiation console |
 | [Pitch deck](presentations/pacta-case-pitch/)                                           | The complete 3–5 minute product story and demo narrative                               |
