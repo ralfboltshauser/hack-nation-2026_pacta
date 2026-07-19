@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 
 import {
   awards,
+  conversations,
   conversationTurnExecutions,
   contextInjections,
   createDatabase,
@@ -151,8 +152,73 @@ describe.skipIf(!databaseUrl)("Custom LLM handler", () => {
       ]),
     );
     expect(revisions[0]?.data).toMatchObject({ origin: { city: "Zurich" } });
+
+    const lateGenerationStarted = Promise.withResolvers<void>();
+    const releaseLateGeneration = Promise.withResolvers<void>();
+    const lateResponse = await handleChatCompletion(
+      makeRequest([
+        ...body.messages,
+        { role: "assistant", content: "I recorded Zurich." },
+        { role: "user", content: "Change the pickup city to Basel." },
+      ]),
+      {
+        generate: async () => {
+          lateGenerationStarted.resolve();
+          await releaseLateGeneration.promise;
+          return {
+            spokenResponse: "I changed the pickup city to Basel.",
+            reduction: {
+              jobObservations: [
+                {
+                  path: "/origin/city",
+                  value: "Basel",
+                  evidenceQuote: "Basel",
+                },
+              ],
+              offerObservations: [],
+              signals: {
+                jobConfirmed: false,
+                jobCorrectionRequested: false,
+                supplierDeclined: false,
+                callbackRequested: false,
+                offerIsFinal: false,
+                selectedOfferRevisionId: null,
+                supplierAcceptedExactTerms: false,
+                customerDeclinedAll: false,
+              },
+            },
+          };
+        },
+      },
+    );
+    const lateText = lateResponse.text();
+    await lateGenerationStarted.promise;
+    await db
+      .update(conversations)
+      .set({ status: "ended", endedAt: new Date() })
+      .where(eq(conversations.id, graph.customer.conversation.id));
+    releaseLateGeneration.resolve();
+    await expect(lateText).resolves.toContain("The response stream failed");
+    const revisionsAfterEnd = await db
+      .select()
+      .from(jobRevisions)
+      .where(eq(jobRevisions.jobId, graph.job.id));
+    expect(revisionsAfterEnd).toHaveLength(1);
+    const executionsAfterEnd = await db
+      .select()
+      .from(conversationTurnExecutions)
+      .where(
+        eq(
+          conversationTurnExecutions.conversationId,
+          graph.customer.conversation.id,
+        ),
+      );
+    expect(executionsAfterEnd).toHaveLength(2);
+    expect(executionsAfterEnd.map((execution) => execution.status)).toEqual(
+      expect.arrayContaining(["completed", "failed"]),
+    );
     await client.end();
-  });
+  }, 30_000);
 
   it("injects a verified anonymous offer into another live negotiation", async () => {
     process.env.DATABASE_URL = databaseUrl!;
@@ -467,5 +533,5 @@ describe.skipIf(!databaseUrl)("Custom LLM handler", () => {
     expect(award?.status).toBe("confirmed");
     expect(completedSession?.status).toBe("closing");
     await client.end();
-  });
+  }, 30_000);
 });

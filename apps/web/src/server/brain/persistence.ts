@@ -50,6 +50,7 @@ import {
 
 export class BrainAuthenticationError extends Error {}
 export class BrainTurnInProgressError extends Error {}
+export class BrainConversationTerminalError extends Error {}
 
 export type BegunBrainTurn = {
   executionId: string;
@@ -111,6 +112,11 @@ export async function beginBrainTurn(
     ) {
       throw new BrainAuthenticationError(
         "Conversation context or brain token is invalid.",
+      );
+    }
+    if (["ended", "failed"].includes(conversation.status)) {
+      throw new BrainConversationTerminalError(
+        "The provider conversation is already terminal.",
       );
     }
     if (!["connected", "in_progress"].includes(conversation.status)) {
@@ -496,7 +502,26 @@ export async function completeBrainTurn(
   output: BrainOutput,
   options: { sourceArtifact?: BrainTurnEvidenceSource } = {},
 ) {
-  return db.transaction(async (rawTx) => {
+  const transactionStartedAt = performance.now();
+  let sessionLockAcquiredAt: number | null = null;
+  function logCommitTiming(committed: boolean) {
+    const finishedAt = performance.now();
+    console.info("Custom LLM commit timing", {
+      executionId: begun.executionId,
+      purpose: begun.snapshot.purpose,
+      committed,
+      sessionLockAcquireMs:
+        sessionLockAcquiredAt === null
+          ? null
+          : Math.round(sessionLockAcquiredAt - transactionStartedAt),
+      afterSessionLockMs:
+        sessionLockAcquiredAt === null
+          ? null
+          : Math.round(finishedAt - sessionLockAcquiredAt),
+      transactionMs: Math.round(finishedAt - transactionStartedAt),
+    });
+  }
+  const completion = db.transaction(async (rawTx) => {
     const tx = rawTx as unknown as PactaDatabase;
     // Every completion can append a session event and inject context into peer
     // conversations. Lock the shared session before any per-turn aggregates so
@@ -506,6 +531,20 @@ export async function completeBrainTurn(
       .from(sessions)
       .where(eq(sessions.id, begun.sessionId))
       .for("update");
+    sessionLockAcquiredAt = performance.now();
+    const [conversation] = await tx
+      .select({ status: conversations.status })
+      .from(conversations)
+      .where(eq(conversations.id, begun.conversationId))
+      .for("update");
+    if (
+      !conversation ||
+      !["connected", "in_progress"].includes(conversation.status)
+    ) {
+      throw new BrainConversationTerminalError(
+        "The provider conversation ended before the turn could commit.",
+      );
+    }
     const [execution] = await tx
       .select()
       .from(conversationTurnExecutions)
@@ -706,6 +745,16 @@ export async function completeBrainTurn(
       .where(eq(conversationTurnExecutions.id, begun.executionId));
     return output.spokenResponse;
   });
+  return completion.then(
+    (responseText) => {
+      logCommitTiming(true);
+      return responseText;
+    },
+    (error: unknown) => {
+      logCommitTiming(false);
+      throw error;
+    },
+  );
 }
 
 async function persistReductionEvidence(
@@ -728,6 +777,9 @@ async function persistReductionEvidence(
       : null;
   if (!observations.length || !revisionId) return;
 
+  const evidenceRows: (typeof evidence.$inferInsert)[] = [];
+  const jobLinks: (typeof jobRevisionEvidence.$inferInsert)[] = [];
+  const offerLinks: (typeof offerRevisionEvidence.$inferInsert)[] = [];
   for (const [index, observation] of observations.entries()) {
     const attachmentEvidence =
       observation.evidenceSource === "attachment" ||
@@ -743,46 +795,46 @@ async function persistReductionEvidence(
     const evidenceId = deterministicUuid(
       `${begun.executionId}:${index}:${observation.path}:${attachmentEvidence ? "attachment" : "human_turn"}`,
     );
-    await db
-      .insert(evidence)
-      .values({
-        id: evidenceId,
-        workspaceId: begun.workspaceId,
-        sessionId: begun.sessionId,
-        sourceArtifactId: attachmentEvidence
-          ? sourceArtifact!.artifactId
-          : null,
-        sourceConversationTurnId: attachmentEvidence ? null : begun.userTurnId,
-        locator: attachmentEvidence
-          ? {
-              kind: "document_quote",
-              filename: sourceArtifact!.filename,
-              jsonPointer: observation.path,
-            }
-          : { kind: "conversation_quote", jsonPointer: observation.path },
-        excerpt: observation.evidenceQuote,
-      })
-      .onConflictDoNothing({ target: evidence.id });
+    evidenceRows.push({
+      id: evidenceId,
+      workspaceId: begun.workspaceId,
+      sessionId: begun.sessionId,
+      sourceArtifactId: attachmentEvidence ? sourceArtifact!.artifactId : null,
+      sourceConversationTurnId: attachmentEvidence ? null : begun.userTurnId,
+      locator: attachmentEvidence
+        ? {
+            kind: "document_quote",
+            filename: sourceArtifact!.filename,
+            jsonPointer: observation.path,
+          }
+        : { kind: "conversation_quote", jsonPointer: observation.path },
+      excerpt: observation.evidenceQuote,
+    });
     if (eventType === "job.revision_created") {
-      await db
-        .insert(jobRevisionEvidence)
-        .values({
-          jobRevisionId: revisionId,
-          jsonPointer: observation.path,
-          evidenceId,
-        })
-        .onConflictDoNothing();
+      jobLinks.push({
+        jobRevisionId: revisionId,
+        jsonPointer: observation.path,
+        evidenceId,
+      });
     } else {
-      await db
-        .insert(offerRevisionEvidence)
-        .values({
-          offerRevisionId: revisionId,
-          jsonPointer: observation.path,
-          evidenceId,
-        })
-        .onConflictDoNothing();
+      offerLinks.push({
+        offerRevisionId: revisionId,
+        jsonPointer: observation.path,
+        evidenceId,
+      });
     }
   }
+  await db
+    .insert(evidence)
+    .values(evidenceRows)
+    .onConflictDoNothing({ target: evidence.id });
+  if (jobLinks.length)
+    await db.insert(jobRevisionEvidence).values(jobLinks).onConflictDoNothing();
+  if (offerLinks.length)
+    await db
+      .insert(offerRevisionEvidence)
+      .values(offerLinks)
+      .onConflictDoNothing();
 }
 
 export async function abortBrainTurn(

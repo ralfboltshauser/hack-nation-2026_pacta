@@ -13,6 +13,7 @@ import {
 import { ensureSessionAccess } from "./session-access";
 
 const replayPageSize = 500;
+const subscriptionRetryDelaysMs = [250, 750, 1_500] as const;
 
 export function useSessionEvents(sessionId?: string) {
   const [events, setEvents] = useState<RealtimeSessionEvent[]>([]);
@@ -34,6 +35,8 @@ export function useSessionEvents(sessionId?: string) {
     let replayQueue = Promise.resolve();
     let replayHealthy = true;
     let viewRefresh: ReturnType<typeof setTimeout> | undefined;
+    let subscriptionRetry: ReturnType<typeof setTimeout> | undefined;
+    let consecutiveSubscriptionFailures = 0;
 
     function publish(incoming: RealtimeSessionEvent[]) {
       buffer = mergeSessionEvents(buffer, incoming);
@@ -119,31 +122,56 @@ export function useSessionEvents(sessionId?: string) {
           });
       }
 
-      channel = realtimeClient
-        .channel(`session:${activeSessionId}`, { config: { private: true } })
-        .on("broadcast", { event: "*" }, (message) => {
-          const candidate = normalizeSessionEvent(
-            (message.payload ?? message) as Record<string, unknown>,
-          );
-          if (!candidate) return;
-          queueCandidate(candidate);
-        })
-        .subscribe((nextStatus) => {
+      function subscribeToSessionEvents() {
+        if (cancelled || !realtimeClient) return;
+        const client = realtimeClient;
+        const candidateChannel = client
+          .channel(`session:${activeSessionId}`, { config: { private: true } })
+          .on("broadcast", { event: "*" }, (message) => {
+            const candidate = normalizeSessionEvent(
+              (message.payload ?? message) as Record<string, unknown>,
+            );
+            if (!candidate) return;
+            queueCandidate(candidate);
+          });
+        channel = candidateChannel;
+        candidateChannel.subscribe((nextStatus) => {
+          if (cancelled || channel !== candidateChannel) return;
           if (nextStatus === "SUBSCRIBED") {
+            consecutiveSubscriptionFailures = 0;
             queueCandidate();
             scheduleViewRefresh(true);
             replayQueue.then(
               () => !cancelled && replayHealthy && setStatus("live"),
             );
+            return;
           }
-          if (nextStatus === "CHANNEL_ERROR" || nextStatus === "TIMED_OUT")
+          if (nextStatus !== "CHANNEL_ERROR" && nextStatus !== "TIMED_OUT")
+            return;
+
+          const delay =
+            subscriptionRetryDelaysMs[consecutiveSubscriptionFailures];
+          if (delay === undefined) {
             setStatus("error");
+            return;
+          }
+          consecutiveSubscriptionFailures += 1;
+          channel = undefined;
+          setStatus("connecting");
+          void client.removeChannel(candidateChannel).finally(() => {
+            if (cancelled) return;
+            subscriptionRetry = setTimeout(subscribeToSessionEvents, delay);
+          });
         });
+      }
+
+      subscribeToSessionEvents();
     }
     connect().catch(() => !cancelled && setStatus("error"));
     return () => {
       cancelled = true;
       if (viewRefresh) clearTimeout(viewRefresh);
+      if (subscriptionRetry) clearTimeout(subscriptionRetry);
       if (channel && realtimeClient) void realtimeClient.removeChannel(channel);
     };
   }, [sessionId]);

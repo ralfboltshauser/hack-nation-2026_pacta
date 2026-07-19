@@ -16,10 +16,13 @@ Verified on 2026-07-19:
 - The public GitHub repository `ralfboltshauser/hack-nation-2026_pacta` is pushed on `main`; GitHub CI passes on the protected implementation commit.
 - The manually created Supabase project is healthy. Seven migrations apply from a blank PostgreSQL 17 database and on the hosted project. The private bucket, anonymous Auth, membership-scoped RLS, and Realtime access were functionally tested.
 - Stripe Projects is initialized locally for inventory, but its Supabase resource creation failed at the provider boundary. The manual Supabase project is the accepted fallback; do not retry the broken resource.
-- The separate Vercel project `pacta-negotiator` uses `apps/web` as its monorepo root and is healthy at `https://pacta.openexp.dev`; the unrelated `pacta-character` project was not mutated. Production Supabase, model, security, and disarmed telephony variables are present.
+- The separate Vercel project `pacta-negotiator` uses `apps/web` as its monorepo root and is healthy at `https://pacta.openexp.dev`; the unrelated `pacta-character` project was not mutated. Production Supabase, model, security, and disarmed telephony variables are present. Its default function region is now `dub1`, beside Supabase Ireland; the change takes effect with the next deployment.
 - The private ElevenLabs customer and supplier agents point to the production Custom LLM endpoint. The workspace post-call webhook is HMAC-signed and its secret is stored only in Vercel. The supplier agent permits a signed text-only override for the no-phone harness.
 - Outbound telephony is fail-closed unless `PACTA_OUTBOUND_CALLS_ENABLED` is exactly `true`. It remains `false`; no friend phone has been called.
-- A clean local schema rebuild, 27 automated tests, lint, typecheck, production build, Playwright UI test, GitHub CI, production TLS/liveness, and production database readiness pass. The complete deployed safe harness, exact deployed ElevenLabs file bridge, and real supplier-call behavior still require provider proof.
+- The original Custom LLM failure is fixed: descriptive AI SDK structured output plus Gemini 2.5 Flash Lite completed both deployed customer turns without a retry. A terminal-conversation commit guard passes against hosted Postgres.
+- The safe three-supplier trace exposed shared-session-lock serialization, not model serialization. Evidence inserts are now bulked, exact lock timings are instrumented, and the `dub1` deployment plus repeat trace are the next gate.
+- Authenticated private Realtime Broadcast and durable HTTP replay are verified in production. A first-connect `MissingPartition` race was reproduced, so the UI now retries the subscription with bounded backoff and relies on replay for correctness.
+- A clean local schema rebuild, automated tests, lint, typecheck, production build, Playwright UI test, GitHub CI, production TLS/liveness, and production database readiness pass. The complete deployed safe harness, exact deployed ElevenLabs file bridge, and real supplier-call behavior still require provider proof.
 
 ## Target repository shape
 

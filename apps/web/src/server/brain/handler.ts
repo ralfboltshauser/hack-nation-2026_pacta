@@ -133,6 +133,7 @@ export async function handleChatCompletion(
   request: Request,
   dependencies: BrainHandlerDependencies = {},
 ) {
+  const requestStartedAt = performance.now();
   let body: unknown;
   try {
     body = await request.json();
@@ -154,9 +155,13 @@ export async function handleChatCompletion(
       async () => {
         const { db, client } = openDatabase();
         let begun: Awaited<ReturnType<typeof beginBrainTurn>> | undefined;
+        let beginCompletedAt = requestStartedAt;
+        let generationCompletedAt = requestStartedAt;
         try {
           const fingerprint = fingerprintChatCompletion(parsed.data);
           begun = await beginBrainTurnWithWait(db, parsed.data, fingerprint);
+          beginCompletedAt = performance.now();
+          generationCompletedAt = beginCompletedAt;
           const artifactId = artifactIdFromMessages(parsed.data.messages);
           const sourceArtifact =
             !begun.replayText && artifactId
@@ -215,6 +220,7 @@ export async function handleChatCompletion(
                     parsed.data,
                     begun.snapshot,
                   ));
+          generationCompletedAt = performance.now();
           const text =
             begun.replayText ??
             (await completeBrainTurn(
@@ -232,6 +238,16 @@ export async function handleChatCompletion(
             ));
           if (!begun.replayText)
             dependencies.onCommitted?.({ request: parsed.data, output });
+          const completedAt = performance.now();
+          console.info("Custom LLM turn timing", {
+            executionId: begun.executionId,
+            purpose: begun.snapshot.purpose,
+            replay: Boolean(begun.replayText),
+            beginMs: Math.round(beginCompletedAt - requestStartedAt),
+            generationMs: Math.round(generationCompletedAt - beginCompletedAt),
+            commitMs: Math.round(completedAt - generationCompletedAt),
+            totalMs: Math.round(completedAt - requestStartedAt),
+          });
           return completionResult(parsed.data, begun, output, text);
         } catch (error) {
           if (begun && !begun.replayText) {
@@ -247,7 +263,18 @@ export async function handleChatCompletion(
             !(error instanceof BrainAuthenticationError) &&
             !(error instanceof BrainTurnInProgressError)
           )
-            console.error("Custom LLM turn failed", error);
+            console.error("Custom LLM turn failed", {
+              executionId: begun?.executionId ?? null,
+              purpose: parsed.data.elevenlabs_extra_body.purpose,
+              beginMs: Math.round(beginCompletedAt - requestStartedAt),
+              generationMs: Math.round(
+                generationCompletedAt - beginCompletedAt,
+              ),
+              totalMs: Math.round(performance.now() - requestStartedAt),
+              errorName: error instanceof Error ? error.name : "unknown",
+              errorMessage:
+                error instanceof Error ? error.message : "Unknown failure",
+            });
           throw error;
         } finally {
           await client.end();
