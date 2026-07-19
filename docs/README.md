@@ -6,6 +6,7 @@ Use this directory for validated market research, product and system architectur
 
 - [`call-flow.md`](call-flow.md) — canonical customer/supplier call lifecycle: confirmed intake, parallel long-lived supplier calls, verified cross-call leverage, customer selection, supplier commitment, closeout, failures, UI event semantics, and known MVP/UI differences.
 - [`implementation-plan.md`](implementation-plan.md) — dependency-ordered implementation milestones plus their current verified/pending state, cleanup gates, deployment, and full E2E proof.
+- [`investigations/custom-llm-turn-failure-2026-07-19.md`](investigations/custom-llm-turn-failure-2026-07-19.md) — measured layer-by-layer failure trace, sequence diagram, edge contracts, hypotheses, and safe verification plan for the Custom LLM timeout.
 
 ## Architecture drafts
 

@@ -9,28 +9,28 @@ import { buildBrainPrompt, parseBrainModelOutput } from "./model";
 describe("brain model output", () => {
   it("decodes use-case-agnostic JSON observation values", () => {
     const output = parseBrainModelOutput({
-      say: "Thanks.",
-      act: "speak",
-      job: [
+      spokenResponse: "Thanks.",
+      responseAction: "speak",
+      jobObservations: [
         {
-          path: "/origin/city",
-          json: '"Zurich"',
-          quote: "Zurich",
+          jsonPointer: "/origin/city",
+          valueJson: '"Zurich"',
+          evidenceQuote: "Zurich",
         },
         {
-          path: "/specialServices",
-          json: "[]",
-          quote: "no special services",
-        },
-      ],
-      offer: [
-        {
-          path: "/lineItems",
-          json: '[{"code":"linehaul","amountMinor":136000}]',
-          quote: "linehaul 136000 minor units",
+          jsonPointer: "/specialServices",
+          valueJson: "[]",
+          evidenceQuote: "no special services",
         },
       ],
-      signals: ["job_confirmed"],
+      offerObservations: [
+        {
+          jsonPointer: "/lineItems",
+          valueJson: '[{"code":"linehaul","amountMinor":136000}]',
+          evidenceQuote: "linehaul 136000 minor units",
+        },
+      ],
+      signalKeys: ["job_confirmed"],
       selectedOfferRevisionId: null,
     });
 
@@ -49,17 +49,17 @@ describe("brain model output", () => {
   it("rejects an observation that is not valid JSON", () => {
     expect(() =>
       parseBrainModelOutput({
-        say: "Thanks.",
-        act: "speak",
-        job: [
+        spokenResponse: "Thanks.",
+        responseAction: "speak",
+        jobObservations: [
           {
-            path: "/origin/city",
-            json: "Zurich",
-            quote: "Zurich",
+            jsonPointer: "/origin/city",
+            valueJson: "Zurich",
+            evidenceQuote: "Zurich",
           },
         ],
-        offer: [],
-        signals: [],
+        offerObservations: [],
+        signalKeys: [],
         selectedOfferRevisionId: null,
       }),
     ).toThrow("invalid JSON");
@@ -68,18 +68,18 @@ describe("brain model output", () => {
   it("preserves evidence sources for authenticated file intake", () => {
     const output = parseBrainModelOutput(
       {
-        say: "Please confirm the pickup city.",
-        act: "speak",
-        job: [
+        spokenResponse: "Please confirm the pickup city.",
+        responseAction: "speak",
+        jobObservations: [
           {
-            path: "/origin/city",
-            json: '"Zurich"',
-            quote: "Pickup: Zurich",
-            source: "attachment",
+            jsonPointer: "/origin/city",
+            valueJson: '"Zurich"',
+            evidenceQuote: "Pickup: Zurich",
+            evidenceSource: "attachment",
           },
         ],
-        offer: [],
-        signals: [],
+        offerObservations: [],
+        signalKeys: [],
         selectedOfferRevisionId: null,
       },
       "intake",
