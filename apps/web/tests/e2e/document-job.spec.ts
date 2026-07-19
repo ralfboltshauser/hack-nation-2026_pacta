@@ -28,6 +28,7 @@ test("creates a document-first session without a customer phone", async ({
     page.getByRole("heading", { name: /turn a document/i }),
   ).toBeVisible();
   await expect(page.getByText("No customer call")).toBeVisible();
+  await expect(page.getByLabel("Supplier 1 phone")).toHaveValue("");
 
   await page.getByRole("button", { name: /create job from document/i }).click();
   await expect(

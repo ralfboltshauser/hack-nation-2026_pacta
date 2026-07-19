@@ -86,13 +86,12 @@ test("validates and launches a negotiation session", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: /one customer/i }),
   ).toBeVisible();
+  await expect(page.getByLabel("Customer phone")).toHaveValue("");
+  await expect(page.getByLabel("Supplier 1 phone")).toHaveValue("");
   await expect(
     page.getByRole("link", { name: /start from a document/i }),
   ).toHaveAttribute("href", "/doc-job");
   await expect(page.locator(".mascot-stage canvas")).toBeVisible();
-
-  await page.getByLabel("Customer phone").fill("");
-  await page.getByLabel("Supplier 1 phone").fill("");
 
   await page.getByRole("button", { name: "Start negotiation" }).click();
   await expect(

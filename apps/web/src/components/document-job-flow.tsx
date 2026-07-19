@@ -19,6 +19,7 @@ import { type DragEvent, type FormEvent, useRef, useState } from "react";
 import { IntakeChat } from "./intake-chat";
 
 const e164Pattern = /^\+[1-9]\d{7,14}$/;
+const examplePhoneNumber = "+12025550123";
 const allowedFileTypes = new Set([
   "application/pdf",
   "image/jpeg",
@@ -26,13 +27,6 @@ const allowedFileTypes = new Set([
   "image/webp",
 ]);
 const maximumFileBytes = 4_000_000;
-const configuredSupplierPhones = (
-  process.env.NEXT_PUBLIC_PACTA_DEFAULT_SUPPLIER_PHONES ?? ""
-)
-  .split(",")
-  .map((phone) => phone.trim())
-  .filter(Boolean)
-  .slice(0, 3);
 
 type DocumentSession = {
   sessionId?: string;
@@ -66,9 +60,7 @@ export function DocumentJobFlow({
   const [useCase, setUseCase] = useState<
     "freight_brokerage" | "contractor_bids"
   >("freight_brokerage");
-  const [supplierPhones, setSupplierPhones] = useState(
-    configuredSupplierPhones.length ? configuredSupplierPhones : [""],
-  );
+  const [supplierPhones, setSupplierPhones] = useState([""]);
   const [attempted, setAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -89,7 +81,7 @@ export function DocumentJobFlow({
   const supplierValidationErrors = normalizedSuppliers.map(
     (phone, index, phones) => {
       if (!e164Pattern.test(phone))
-        return "Enter a valid international number, for example +41791234567.";
+        return `Enter a valid international number, for example ${examplePhoneNumber}.`;
       if (phones.indexOf(phone) !== index)
         return "Each supplier needs a different phone number.";
       return null;
@@ -343,7 +335,7 @@ export function DocumentJobFlow({
                       inputMode="tel"
                       autoComplete="off"
                       value={phone}
-                      placeholder="+41791234567"
+                      placeholder={examplePhoneNumber}
                       disabled={submitting}
                       aria-invalid={Boolean(
                         attempted && supplierValidationErrors[index],

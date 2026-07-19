@@ -1,7 +1,6 @@
 import { ElevenLabsClient, type ElevenLabs } from "@elevenlabs/elevenlabs-js";
 
 const AGENT_NAME = "Pacta One Message Call";
-const DEFAULT_TO_NUMBER = "+41786305531";
 const VOICE_ID = "NDTYOmYEjbDIVCKB35i3";
 const MESSAGE =
   "I have a competing offer of two thousand one hundred and fifty Swiss francs for this shipment. Can you beat it?";
@@ -16,7 +15,12 @@ function required(name: string) {
 }
 
 function destinationNumber() {
-  const value = (process.argv[2] ?? DEFAULT_TO_NUMBER).trim();
+  const value = process.argv[2]?.trim();
+  if (!value) {
+    throw new Error(
+      "A consenting destination number is required as the first argument.",
+    );
+  }
   if (!/^\+[1-9]\d{7,14}$/.test(value)) {
     throw new Error(
       `Destination must be an E.164 phone number, received ${value}.`,

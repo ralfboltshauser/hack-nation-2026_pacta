@@ -18,23 +18,13 @@ import { LiveSessionConsole } from "./live-session-console";
 import { MascotStage } from "./mascot-stage";
 
 const e164Pattern = /^\+[1-9]\d{7,14}$/;
-const defaultCustomerPhone =
-  process.env.NEXT_PUBLIC_PACTA_DEFAULT_CUSTOMER_PHONE?.trim() ?? "";
-const configuredSupplierPhones = (
-  process.env.NEXT_PUBLIC_PACTA_DEFAULT_SUPPLIER_PHONES ?? ""
-)
-  .split(",")
-  .map((phone) => phone.trim())
-  .filter(Boolean)
-  .slice(0, 3);
-const defaultSupplierPhones = configuredSupplierPhones.length
-  ? configuredSupplierPhones
-  : [""];
+const examplePhoneNumber = "+12025550123";
+
 function SessionLauncher() {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
-  const [customerPhone, setCustomerPhone] = useState(defaultCustomerPhone);
-  const [supplierPhones, setSupplierPhones] = useState(defaultSupplierPhones);
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [supplierPhones, setSupplierPhones] = useState([""]);
   const [attempted, setAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -43,7 +33,7 @@ function SessionLauncher() {
   const normalizedSuppliers = supplierPhones.map((phone) => phone.trim());
   const customerError =
     attempted && !e164Pattern.test(normalizedCustomer)
-      ? "Enter a valid E.164 number, for example +41791234567."
+      ? `Enter a valid E.164 number, for example ${examplePhoneNumber}.`
       : null;
   const supplierValidationErrors = normalizedSuppliers.map(
     (phone, index, phones) => {
@@ -215,7 +205,7 @@ function SessionLauncher() {
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel"
-                placeholder="+41791234567"
+                placeholder={examplePhoneNumber}
                 value={customerPhone}
                 onChange={(event) => {
                   setCustomerPhone(event.target.value);
@@ -266,7 +256,7 @@ function SessionLauncher() {
                         type="tel"
                         inputMode="tel"
                         autoComplete="off"
-                        placeholder="+41791234567"
+                        placeholder={examplePhoneNumber}
                         value={phone}
                         onChange={(event) =>
                           updateSupplier(index, event.target.value)
