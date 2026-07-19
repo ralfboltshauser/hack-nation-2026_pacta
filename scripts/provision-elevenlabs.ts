@@ -119,7 +119,7 @@ function platformSettings(
     },
     auth: {
       enableAuth: true,
-      allowlist: [{ hostname: new URL(url).hostname }],
+      allowlist: [],
       requireOriginHeader: false,
     },
     callLimits: {
