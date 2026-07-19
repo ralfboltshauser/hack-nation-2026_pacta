@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 const port = process.env.PLAYWRIGHT_PORT ?? "3100";
 const baseURL = `http://127.0.0.1:${port}`;
+const reuseExistingServer = process.env.PLAYWRIGHT_REUSE_SERVER === "true";
+const useLiveBackend = process.env.PLAYWRIGHT_LIVE_BACKEND === "true";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -18,7 +20,13 @@ export default defineConfig({
   webServer: {
     command: `pnpm dev --hostname 127.0.0.1 --port ${port}`,
     url: `${baseURL}/api/health/live`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer,
+    env: useLiveBackend
+      ? {}
+      : {
+          NEXT_PUBLIC_SUPABASE_URL: "",
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
+        },
     timeout: 120_000,
   },
 });

@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+const documentSessionId = "00000000-0000-4000-8000-000000000002";
+
 test("creates a document-first session without a customer phone", async ({
   page,
 }) => {
@@ -14,7 +16,7 @@ test("creates a document-first session without a customer phone", async ({
       status: 201,
       contentType: "application/json",
       body: JSON.stringify({
-        sessionId: "document-session",
+        sessionId: documentSessionId,
         customerCallStarted: false,
       }),
     });
@@ -41,7 +43,9 @@ test("creates a document-first session without a customer phone", async ({
   await page.getByLabel("Supplier 1 phone").fill("+41792345678");
   await page.getByRole("button", { name: /create job from document/i }).click();
 
-  await expect(page).toHaveURL(/\/doc-job\?session=document-session$/);
+  await expect(page).toHaveURL(
+    new RegExp(`/doc-job\\?session=${documentSessionId}$`),
+  );
   await expect(
     page.getByRole("heading", { name: /let’s define the job/i }),
   ).toBeVisible();

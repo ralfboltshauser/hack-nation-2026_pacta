@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
 
+const launchedSessionId = "00000000-0000-4000-8000-000000000001";
+const legacySessionId = "00000000-0000-4000-8000-000000000003";
+
 test("presents the Pacta story and opens the negotiation room", async ({
   page,
 }) => {
@@ -50,8 +53,10 @@ test("presents the Pacta story and opens the negotiation room", async ({
 test("redirects legacy session links to the negotiation room", async ({
   page,
 }) => {
-  await page.goto("/?session=legacy-session");
-  await expect(page).toHaveURL(/\/negotiate\?session=legacy-session$/);
+  await page.goto(`/?session=${legacySessionId}`);
+  await expect(page).toHaveURL(
+    new RegExp(`/negotiate\\?session=${legacySessionId}$`),
+  );
   await expect(
     page.getByRole("region", { name: "Live negotiation map" }),
   ).toBeVisible();
@@ -72,7 +77,7 @@ test("validates and launches a negotiation session", async ({ page }) => {
     await route.fulfill({
       status: 201,
       contentType: "application/json",
-      body: JSON.stringify({ sessionId: "session-demo" }),
+      body: JSON.stringify({ sessionId: launchedSessionId }),
     });
   });
 
@@ -105,7 +110,9 @@ test("validates and launches a negotiation session", async ({ page }) => {
   await page.getByRole("button", { name: "Remove supplier 3" }).click();
 
   await page.getByRole("button", { name: "Start negotiation" }).click();
-  await expect(page).toHaveURL(/\/negotiate\?session=session-demo$/);
+  await expect(page).toHaveURL(
+    new RegExp(`/negotiate\\?session=${launchedSessionId}$`),
+  );
   await expect(
     page.getByRole("region", { name: "Live negotiation map" }),
   ).toBeVisible();
