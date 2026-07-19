@@ -7,7 +7,6 @@ import {
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { hasDemoAccess } from "@/server/access";
 import { outboundCallsEnabled } from "@/server/orchestration/calls";
 import { hasSessionMembership } from "@/server/sessions/authorization";
 
@@ -23,11 +22,6 @@ export async function POST(
     params: Promise<{ sessionId: string; conversationId: string }>;
   },
 ) {
-  if (!hasDemoAccess(request))
-    return Response.json(
-      { error: "Demo access key required" },
-      { status: 401 },
-    );
   if (outboundCallsEnabled())
     return Response.json(
       {

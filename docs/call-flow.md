@@ -5,7 +5,7 @@ Last updated: 2026-07-19
 
 ## Purpose
 
-This document defines the end-to-end customer and supplier conversation lifecycle for one negotiation session. It is the canonical product-flow companion to the configuration contract in [`architecture/use-case-configuration.md`](architecture/use-case-configuration.md) and the runtime/schema details in [`decisions/0001-http-custom-llm-mvp.md`](decisions/0001-http-custom-llm-mvp.md), [`architecture/http-custom-llm-mvp-blueprint.md`](architecture/http-custom-llm-mvp-blueprint.md), and [`architecture/database-schema.md`](architecture/database-schema.md).
+This document defines the end-to-end customer and supplier conversation lifecycle for one negotiation session. It is the canonical product-flow companion to the configuration contract in [`architecture/use-case-configuration.md`](architecture/use-case-configuration.md) and the runtime/schema details in [`decisions/0002-native-elevenlabs-milestone-tools.md`](decisions/0002-native-elevenlabs-milestone-tools.md) and [`architecture/database-schema.md`](architecture/database-schema.md). The superseded Custom LLM documents remain rollback references only.
 
 The flow is use-case agnostic. “Job,” “supplier,” and “offer” are configured concepts. The electrician scenario in the [UI exploration](../ui-explorations/agent-call-orchestrator/README.md) and freight scenario in the challenge materials are fixtures, not engine behavior.
 
@@ -13,7 +13,7 @@ The flow is use-case agnostic. “Job,” “supplier,” and “offer” are co
 
 - **Customer** — provides and explicitly confirms the job, reviews final offers, and selects or rejects an option.
 - **Customer agent** — keeps one ElevenLabs text-only chat open from intake through final closeout and accepts typed text plus PDF/image input.
-- **Pacta** — the application-owned orchestrator and source-of-truth reducer. Pacta is not itself a voice endpoint.
+- **Pacta** — the application-owned orchestrator and authoritative validator/command service. Pacta is not itself a voice endpoint.
 - **Supplier calling agent** — one independently running voice conversation per supplier negotiation.
 - **Supplier** — clarifies feasibility and terms, states or revises an offer, and either confirms an award or receives a non-selection notice.
 
@@ -23,7 +23,7 @@ The durable universal noun is **conversation**. A phone call is a `voice_pstn` c
 
 Before any friend number is connected, the same private supplier ElevenLabs agent can be started through a signed WebSocket URL with its permitted `text_only` conversation override. The internal supplier-chat endpoints require both session membership and the demo access key, and they return HTTP 409 whenever `PACTA_OUTBOUND_CALLS_ENABLED` is `true`. They create no Twilio or ElevenLabs outbound-call request.
 
-This is not a mock negotiation: the safe harness uses the production supplier agent, Custom LLM endpoint, scoped brain token, reducer, immutable revisions, context injections, post-call webhook, and session closeout. Only speech recognition, synthesis, and PSTN transport are replaced by typed supplier messages. The real-call milestone remains a separate explicit-approval gate.
+This is not a mock negotiation: the safe harness uses the staging native supplier agent, the same typed Next.js milestone tools, scoped conversation token, immutable revisions, shared-state reads, post-call webhook, and session closeout. Only speech recognition, synthesis, and PSTN transport are replaced by typed supplier messages. The real-call milestone remains a separate explicit-approval gate.
 
 ## Configuration boundary
 
@@ -32,11 +32,22 @@ This is not a mock negotiation: the safe harness uses the production supplier ag
 | Immutable revisions and evidence        | Terminology and spoken labels                     | Customer and supplier parties      |
 | Confirmation-before-sourcing gate       | Job schema, questions, and document hints         | Typed input and uploaded artifacts |
 | Parallel conversation lifecycle         | Offer schema, line items, and clarification rules | Uploaded artifacts                 |
-| Reducer-before-response transaction     | Negotiation phases and permitted transitions      | Requested supplier count           |
+| Typed milestone validation and commit   | Negotiation phases and permitted transitions      | Requested supplier count           |
 | Selection versus commitment boundary    | Leverage and disclosure policy                    | Static demo phone numbers          |
 | Idempotency, events, and reconciliation | Review readiness and recommendation policy        | Deadline and operator overrides    |
 
 Deployment configuration separately owns ElevenLabs agent/phone IDs, model IDs, secrets, provider concurrency, and Supabase/Vercel connection details. Freight fields such as lanes, cargo, tolls, or insurance exist only inside one pinned use-case configuration.
+
+### Current short freight demo profile
+
+The live freight fixture is pinned as `freight_brokerage@0.2.0`. It deliberately proves the orchestration lifecycle with the smallest useful conversation:
+
+- customer job: `origin`, `destination`, and `pickupTime`;
+- supplier input: one all-in price in the configured CHF currency;
+- server representation: one `linehaul` amount in minor units, with `/normalized/totalMinor` derived deterministically;
+- retained control gates: explicit customer job confirmation, explicit offer selection, and explicit selected-supplier commitment.
+
+Commodity, weight, equipment, insurance, tolls, payment terms, validity, conditions, and other production fields are absent—not optional—in this demo version. A later configuration version can add them without changing the universal database model or orchestration mechanics.
 
 ## Non-negotiable invariants
 
@@ -46,13 +57,13 @@ Deployment configuration separately owns ElevenLabs agent/phone IDs, model IDs, 
 4. A received offer does not end its supplier call. Successfully connected supplier calls remain open through clarification, negotiation, customer choice, and winner/non-winner closeout unless a genuine failure forces recovery.
 5. Only committed, evidenced, comparable offer facts become cross-call leverage. Raw transcript text, inferred commitments, and materially different quote scopes are not injected as fact.
 6. Cross-call updates are durable and deduplicated. Each target conversation consumes a committed event at most once.
-7. With the selected HTTP Custom LLM runtime, “live injection” happens at the target call’s next natural or silence-triggered response turn. It is not unsolicited mid-sentence interruption.
+7. With the selected native runtime, “live injection” means the target agent reads verified shared state through `get_customer_state` or `get_negotiation_state` at its next natural or silence-triggered turn. It is not unsolicited mid-sentence interruption.
 8. Recommendation, customer selection, and supplier commitment are separate facts. A customer choice is not proof that the supplier accepted the job.
 9. The selected supplier must explicitly confirm the exact snapshotted job and offer terms before non-selected suppliers are closed out.
 10. If the customer selects an offer, the session is complete only after the selected supplier commitment is confirmed, every non-selected supplier has a terminal closeout outcome, the final comparison references immutable evidence, and all conversations have ended. A customer may instead explicitly decline all.
 11. The MVP records an operational commitment, not payment, legal contract execution, or automatic transfer of funds.
 12. PostgreSQL is authoritative. Realtime messages, UI packets, and animations are projections of committed ordered events.
-13. No Vercel request remains open for the duration of a human conversation; ElevenLabs owns the live calls and invokes short brain requests turn by turn.
+13. No Vercel request remains open for the duration of a human conversation; ElevenLabs owns the live calls and invokes short milestone/state webhooks only when needed.
 
 ## Happy-path sequence
 
@@ -82,32 +93,33 @@ sequenceDiagram
     C->>CA: Job facts
     CA->>C: Read back complete job
     C->>CA: Explicit confirmation
-    CA->>P: Confirmed immutable job revision
+    CA->>P: submit_confirmed_job
 
     par Supplier calls
         P->>SAs: Same confirmed job + negotiation policy
         SAs->>Ss: Present job and request offer
         Ss->>SAs: Clarifications and initial offers
-        SAs->>P: Evidenced offer revisions
+        SAs->>P: submit_offer
     end
 
     loop While negotiation policy permits movement
         P->>P: Validate comparability and derive leverage
-        P->>SAs: Deliver verified leverage at response boundaries
+        SAs->>P: get_negotiation_state
+        P-->>SAs: Verified leverage at response boundaries
         SAs->>Ss: Can you meet or beat the comparable offer?
         Ss->>SAs: Revised offer or firm position
-        SAs->>P: New evidenced offer revision
+        SAs->>P: submit_offer revision
     end
 
     P->>CA: Final comparable offers and recommendation
     CA->>C: Present all relevant options
     C->>CA: Choose offer or decline all
-    CA->>P: Explicit selection
+    CA->>P: select_offer
 
     P->>SAs: Exact settlement request to selected agent
     SAs->>Ss: Read back exact job and offer
     Ss->>SAs: Explicit acceptance
-    SAs->>P: Commitment confirmed
+    SAs->>P: commit_selected_offer
 
     par Non-winner closeout
         P->>SAs: Not selected
@@ -123,13 +135,13 @@ sequenceDiagram
 ## Customer chat and file intake
 
 1. The browser obtains an authenticated signed URL and starts one ElevenLabs `text_chat` conversation.
-2. Typed messages go directly through the ElevenLabs conversation socket to the same HTTP Custom LLM used by supplier voice turns.
-3. For a PDF/image turn, the browser first stores a private durable copy in Supabase, uploads the same file to the ElevenLabs conversation, and sends one multimodal message containing an opaque artifact marker.
-4. The HTTP brain resolves that marker only inside the authenticated session, downloads the private artifact, verifies its SHA-256 digest, and supplies the native PDF/image to the configured application model.
-5. Only evidence-supported facts become immutable job revisions; the agent asks the configured highest-priority follow-up until the schema is complete.
-6. The customer must explicitly confirm the exact valid revision before supplier outreach can start.
+2. Typed messages and supported PDF/image input go through the ElevenLabs native chat conversation.
+3. For a PDF/image turn, the browser first stores a private durable copy in Supabase, records its digest, uploads the same file to the ElevenLabs conversation, and correlates the provider file/conversation with the artifact row.
+4. The native customer agent extracts candidate facts and asks the configured highest-priority follow-up until the schema is complete.
+5. The customer must explicitly confirm the exact readback. Only then may the agent call `submit_confirmed_job` with the complete configured document and confirmation evidence.
+6. The Next.js endpoint authorizes the scoped conversation, validates the document against the pinned config, and either commits one immutable job revision or returns exact missing/invalid paths for clarification.
 
-This is still entirely an ElevenLabs customer agent. The application does not expose a parallel Vercel chat endpoint. The marker bridge avoids relying on the currently undocumented exact representation of conversation files forwarded to a Custom LLM while preserving ElevenLabs as the visible conversation transport.
+This remains entirely an ElevenLabs customer agent. The application does not expose a parallel Vercel AI SDK chat. Native file-to-tool fidelity still needs a deployed provider proof; server-side schema validation proves structural validity, not that every extracted fact is truthful.
 
 Each customer input can produce a new immutable revision; missing, `null`, `false`, `0`, and `[]` retain distinct configured meanings. Once complete, the agent reads back configured critical fields and accepts only an explicit confirmation of that exact revision.
 
@@ -137,47 +149,43 @@ If the customer materially changes the confirmed job after supplier outreach sta
 
 ## Verified cross-call leverage loop
 
-The leverage loop is a state-reduction and delivery process, not arbitrary agent-to-agent messaging:
+The leverage loop is a validated milestone-and-state process, not arbitrary agent-to-agent messaging:
 
 1. A supplier finishes a speech turn.
-2. The conversation brain stores the finalized turn and evidence.
-3. The reducer extracts an offer revision and validates it against the pinned offer schema.
-4. The application checks that the candidate leverage is material, evidenced, and comparable. A lower headline price with different exclusions or coverage is not automatically comparable.
-5. The transaction commits the immutable offer revision, leverage fact, ordered session event, and pending target deliveries.
-6. Each eligible live supplier call observes the new event sequence at its next natural or silence-triggered turn.
-7. The target agent cites only the verified comparable terms and asks one configured negotiation question.
-8. A supplier’s response becomes another evidenced revision, and the loop repeats until the configured stop policy is reached.
+2. When the configured offer milestone is complete or materially revised, the agent calls `submit_offer` with the full configured document and supporting evidence.
+3. Pacta revalidates the pinned offer schema, computes server-owned normalized values, and checks comparability. A lower headline price with different exclusions or coverage is not automatically comparable.
+4. A short idempotent transaction commits the immutable offer revision and ordered session event.
+5. Each eligible live supplier agent calls `get_negotiation_state` at its next natural or silence-triggered turn.
+6. Pacta returns only verified anonymous comparable leverage plus a deterministic next action.
+7. The target agent cites only that returned leverage and asks one configured negotiation question.
+8. A supplier’s response may become another `submit_offer` revision, and the loop repeats until the configured stop policy is reached.
 
 The [shared-state negotiation experiment](../experiments/elevenlabs/shared-state-negotiation/README.md) proves this propagation between two active ElevenLabs conversations at tool/turn boundaries. It also proves an important guard: when insurance scope became different, the system stopped using headline price as leverage. It does **not** prove mid-utterance injection, PSTN concurrency, or five-way calling.
 
 ### Delivery and anti-spam rules
 
-- Every delivery references its source event and target conversation.
-- `last_context_event_seq` records what a response generation could see; `last_delivered_event_seq` advances only after completed delivery.
-- Retries reuse idempotency keys and cannot invent a second offer revision or repeat the same announcement.
+- Every state response references its source event/revision and target conversation.
+- The negotiation stores the newest leverage revision already acknowledged so unchanged leverage is not repeated.
+- Repeated webhook delivery is handled by command idempotency; identical job/offer hashes replay the existing result.
 - If no new material event exists, the agent remains silent or uses the supported `skip_turn` behavior.
 - Do not inject a worse offer into the current market-best supplier merely to create activity.
 - Do not inject the same leverage again after a supplier has already answered it unless the underlying comparable terms materially change.
 - Do not inject unverified statements, hidden chain-of-thought, or free-form messages authored by another calling agent.
 
-## Per-turn HTTP brain contract
+## Milestone webhook contract
 
-For every ElevenLabs response request:
+For every ElevenLabs milestone or state tool request:
 
-1. authenticate the provider and resolve the scoped conversation token;
-2. canonicalize the accumulated messages/files;
-3. decide whether a genuinely new finalized user turn exists;
-4. claim or replay one `conversation_turn_execution`;
-5. persist new conversational evidence;
-6. run the structured reducer;
-7. validate its proposed changes against engine rules and the pinned schemas;
-8. transactionally commit revisions, projections, leverage, deliveries, and ordered events;
-9. load the newest committed session state;
-10. build one narrow next objective;
-11. stream the response or supported ElevenLabs system-tool call;
-12. persist the assistant turn and advance delivery cursors only after completed delivery.
+1. authenticate the secret scoped header and resolve server-supplied conversation/session/config identity;
+2. reject model-authored tenant or authority identifiers;
+3. validate the tool envelope and full configured document against the pinned schema;
+4. enforce the current lifecycle transition and explicit-confirmation/commitment boundary;
+5. canonicalize and hash the authoritative payload for natural idempotency;
+6. transactionally commit only the required revision, projection, and ordered event;
+7. return the accepted revision or exact missing/invalid paths plus a deterministic next action;
+8. require the agent to base its next statement on that result and never claim success before it.
 
-A retry, tool-result continuation, or interrupted response must not reduce the same user speech twice. Finalized turn-level transcription is sufficient for business-state updates; it is not a claim of word-by-word live captions.
+ElevenLabs does not document an exactly-once webhook delivery ID or retry contract, so handlers cannot rely on provider delivery identity. Transcript and post-call data remain reconciliation/audit inputs; they are not a second response-critical extraction path.
 
 ## Orthogonal state dimensions
 
@@ -327,7 +335,7 @@ The native outbound path does not support a trustworthy exact `ringing` UI invar
 These differences are intentionally explicit:
 
 1. **Supplier count:** the current UI exploration shows five suppliers. The accepted MVP uses three suppliers. The logical flow is parameterized by `N`; implementation and live-demo defaults remain three while real phone tests use the three supplied friend numbers.
-2. **Injection timing:** the UI makes a labeled packet visually traverse immediately. The HTTP Custom LLM architecture can only guarantee delivery at the target conversation’s next natural or silence-triggered turn. Treat the animation as an ordered event replay, not a claim of mid-sentence push control.
+2. **Injection timing:** the UI makes a labeled packet visually traverse immediately. The native milestone-tool architecture can only guarantee consumption when the target agent calls its state tool at the next natural or silence-triggered turn. Treat the animation as an ordered event replay, not a claim of mid-sentence push control.
 3. **Explicit job confirmation:** the accepted product contract requires a distinct customer confirmation before supplier outreach. The current UI moves from “Capturing the request” to “Job created” and does not visibly show that confirmation gate. The UI should add it before it is treated as a faithful production-flow representation.
 4. **Fixture:** the UI uses a mocked electrician job, while the challenge demo currently plans freight plus a structurally different conformance fixture. The engine remains domain-neutral; neither fixture changes the lifecycle.
 5. **Evidence boundary:** the current UI is deterministic mock data. It demonstrates orchestration semantics but is not evidence that PSTN calls, silence turns, or five-way concurrency work.
@@ -339,12 +347,12 @@ These differences are intentionally explicit:
 
 This document defines the intended contract, not proof that every provider behavior already works. Before implementation relies on the full flow:
 
-1. capture real HTTP Custom LLM authentication, retries, interruptions, and tool continuations;
+1. run repeated complete/incomplete native tool-call evals and reject malformed/stale bodies;
 2. prove native outbound correlation and ambiguous-initiation recovery;
-3. prove repeated silence-triggered turns plus `skip_turn` on long-lived supplier calls;
+3. prove repeated silence-triggered state reads on long-lived supplier calls without repetitive speech;
 4. prove three simultaneous supplier calls while customer chat remains open;
-5. prove a deployed ElevenLabs PDF/image turn carries the private artifact marker to the HTTP brain and produces attachment-backed evidence;
-6. prove the open customer chat truthfully observes committed supplier updates on its next turn; unsolicited forced turns remain outside the MVP;
+5. prove a deployed ElevenLabs PDF/image turn produces the exact complete configured job tool payload with attachment correlation;
+6. prove the open customer chat truthfully observes committed supplier updates through `get_customer_state` on its next turn; unsolicited forced turns remain outside the MVP;
 7. measure whether suppliers tolerate the configured waiting behavior during the real evidence run.
 
 ## Completion checklist
@@ -357,5 +365,5 @@ A session may enter `completed` only when all are true:
 - [ ] If an offer was selected, the supplier explicitly confirmed the exact snapshotted terms.
 - [ ] Every non-selected supplier has a terminal notified or policy-exhausted failure closeout status.
 - [ ] Every customer and supplier conversation has a terminal provider disposition.
-- [ ] No pending context delivery or external action can still change the recorded outcome.
+- [ ] No pending commitment, closeout, or external action can still change the recorded outcome.
 - [ ] `session.completed` was appended idempotently after the preceding checks.

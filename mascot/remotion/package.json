@@ -1,0 +1,17 @@
+{
+  "name": "pacta-mascot-remotion",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "remotion render src/index.jsx PactaSpin assets/.pacta-bot-spin-remotion.webm --codec=vp8 --pixel-format=yuva420p --image-format=png --video-bitrate=8M --concurrency=1 --chromium-angle=swiftshader --quiet && ffmpeg -v error -i assets/.pacta-bot-spin-remotion.webm -map 0:v:0 -c:v copy -an -y assets/pacta-bot-spin-transparent.webm && rm -f assets/.pacta-bot-spin-remotion.webm",
+    "render:white": "remotion render src/index.jsx PactaSpinWhite assets/pacta-bot-spin-white.mp4 --codec=h264 --crf=14 --pixel-format=yuv420p --image-format=png --muted --concurrency=1 --chromium-angle=swiftshader --quiet"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.491",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.491",
+    "three": "0.185.1"
+  }
+}

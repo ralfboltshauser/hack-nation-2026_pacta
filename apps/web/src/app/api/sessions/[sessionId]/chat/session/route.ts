@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
 
 import { conversations, createDatabase, sessions } from "@pacta/db";
-import { createBrainToken, getSignedConversationUrl } from "@pacta/elevenlabs";
+import {
+  buildSignedTextSessionPayload,
+  createBrainToken,
+  getSignedConversationUrl,
+  selectPactaAgent,
+} from "@pacta/elevenlabs";
 import { and, eq } from "drizzle-orm";
 
 import { hasSessionMembership } from "@/server/sessions/authorization";
@@ -28,10 +33,18 @@ export async function POST(
     if (!access.authorized)
       return Response.json({ error: "Session access denied" }, { status: 403 });
     const apiKey = process.env.ELEVENLABS_API_KEY;
-    const agentId = process.env.ELEVENLABS_CUSTOMER_AGENT_ID;
-    if (!apiKey || !agentId)
+    const agent = selectPactaAgent({
+      runtime: process.env.PACTA_ELEVENLABS_RUNTIME,
+      role: "customer",
+      customLlmAgentId: process.env.ELEVENLABS_CUSTOMER_AGENT_ID,
+      nativeToolsAgentId: process.env.ELEVENLABS_NATIVE_CUSTOMER_AGENT_ID,
+    });
+    if (!apiKey || !agent.agentId)
       return Response.json(
-        { error: "Customer chat agent is not configured" },
+        {
+          error: "Customer chat agent is not configured",
+          missing: !agent.agentId ? agent.environmentVariable : undefined,
+        },
         { status: 503 },
       );
     const [row] = await db
@@ -57,21 +70,32 @@ export async function POST(
         { status: 409 },
       );
 
-    const signedUrl = await getSignedConversationUrl({ apiKey, agentId });
-    const brainToken = createBrainToken();
+    const signedUrl = await getSignedConversationUrl({
+      apiKey,
+      agentId: agent.agentId,
+    });
+    const brainToken =
+      agent.runtime === "custom_llm" ? createBrainToken() : null;
+    // The DB hash is non-null for legacy rollback; epoch expiry revokes it in native mode.
     await db
       .update(conversations)
       .set({
+        agentId: agent.agentId,
         channel: "text_chat",
         provider: "elevenlabs",
         status: "initiating",
-        brainTokenHash: hash(brainToken),
-        brainTokenExpiresAt: new Date(Date.now() + 3 * 60 * 60_000),
+        ...(brainToken
+          ? {
+              brainTokenHash: hash(brainToken),
+              brainTokenExpiresAt: new Date(Date.now() + 3 * 60 * 60_000),
+            }
+          : { brainTokenExpiresAt: new Date(0) }),
       })
       .where(eq(conversations.id, row.conversation.id));
     return Response.json(
-      {
+      buildSignedTextSessionPayload({
         signedUrl,
+        runtime: agent.runtime,
         customLlmExtraBody: {
           contract_version: "1",
           brain_token: brainToken,
@@ -80,7 +104,7 @@ export async function POST(
           conversation_id: row.conversation.id,
           purpose: "customer_intake",
         },
-      },
+      }),
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (error) {

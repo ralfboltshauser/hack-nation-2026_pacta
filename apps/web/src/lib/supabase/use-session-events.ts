@@ -15,6 +15,43 @@ import { ensureSessionAccess } from "./session-access";
 const replayPageSize = 500;
 const subscriptionRetryDelaysMs = [250, 750, 1_500] as const;
 
+type CandidateReconciliation = {
+  getEvents: () => RealtimeSessionEvent[];
+  publish: (events: RealtimeSessionEvent[]) => void;
+  replayFrom: (after: number) => Promise<void>;
+  scheduleViewRefresh: () => void;
+};
+
+export async function reconcileSessionEventCandidate(
+  candidate: RealtimeSessionEvent | undefined,
+  reconciliation: CandidateReconciliation,
+) {
+  const contiguousSequence = contiguousEventSequence(
+    reconciliation.getEvents(),
+  );
+  if (candidate && candidate.eventSeq <= contiguousSequence) return;
+
+  if (candidate && candidate.eventSeq === contiguousSequence + 1) {
+    reconciliation.publish([candidate]);
+    reconciliation.scheduleViewRefresh();
+    return;
+  }
+
+  await reconciliation.replayFrom(contiguousSequence);
+  if (
+    candidate &&
+    !reconciliation
+      .getEvents()
+      .some((event) => event.eventSeq === candidate.eventSeq)
+  )
+    reconciliation.publish([candidate]);
+  if (hasEventGap(reconciliation.getEvents()))
+    throw new Error(
+      "Durable event replay did not repair a Broadcast sequence gap.",
+    );
+  reconciliation.scheduleViewRefresh();
+}
+
 export function useSessionEvents(sessionId?: string) {
   const [events, setEvents] = useState<RealtimeSessionEvent[]>([]);
   const [view, setView] = useState<SessionView | null>(null);
@@ -91,31 +128,14 @@ export function useSessionEvents(sessionId?: string) {
 
       function queueCandidate(candidate?: RealtimeSessionEvent) {
         replayQueue = replayQueue
-          .then(async () => {
-            if (
-              candidate &&
-              candidate.eventSeq <= contiguousEventSequence(buffer)
-            )
-              return;
-            if (
-              candidate &&
-              candidate.eventSeq === contiguousEventSequence(buffer) + 1
-            ) {
-              publish([candidate]);
-              return;
-            }
-            await replayFrom(contiguousEventSequence(buffer));
-            if (
-              candidate &&
-              !buffer.some((event) => event.eventSeq === candidate.eventSeq)
-            )
-              publish([candidate]);
-            if (hasEventGap(buffer))
-              throw new Error(
-                "Durable event replay did not repair a Broadcast sequence gap.",
-              );
-            scheduleViewRefresh();
-          })
+          .then(() =>
+            reconcileSessionEventCandidate(candidate, {
+              getEvents: () => buffer,
+              publish,
+              replayFrom,
+              scheduleViewRefresh,
+            }),
+          )
           .catch(() => {
             replayHealthy = false;
             if (!cancelled) setStatus("error");

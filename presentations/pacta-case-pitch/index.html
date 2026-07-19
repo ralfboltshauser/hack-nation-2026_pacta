@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f6f3" />
+    <title>Pacta — AI-native negotiation infrastructure</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="story-v2.css" />
+  </head>
+  <body>
+    <main class="deck deck-v2" aria-label="Pacta pitch presentation">
+      <header class="chrome">
+        <button class="brand" data-go="0" aria-label="Go to first slide">
+          <strong>Pacta</strong>
+          <span>AI-native negotiation infrastructure</span>
+        </button>
+        <div class="chapter" id="chapter">Freight today</div>
+        <div class="live-state"><i></i><span>Pitch ready</span></div>
+      </header>
+
+      <section class="slide active v2-persona" data-chapter="Freight today" data-notes="Open inside the case. Freight brokerage is negotiated one phone call at a time. This broker is not inefficient—the workflow is. Every load starts a new manual search for price, capacity and terms.">
+        <div class="persona-photo-wrap" aria-hidden="true">
+          <img src="assets/freight-broker-persona-v1.png" alt="" />
+          <div class="persona-photo-shade"></div>
+        </div>
+        <div class="v2-copy persona-copy">
+          <p class="eyebrow">Freight brokerage, today</p>
+          <h1>This is how freight<br /><em>gets priced.</em></h1>
+          <p class="v2-lede">One broker. One load. One carrier call at a time.</p>
+        </div>
+        <div class="persona-caption">
+          <i></i>
+          <span>Calling carriers · comparing terms · negotiating capacity</span>
+        </div>
+      </section>
+
+      <section class="slide v2-serial" data-chapter="One call at a time" data-notes="To create one market, the broker has to become the market. They repeat the same load, wait through unanswered calls, normalize incomplete quotes in their head, then start negotiating. The process scales linearly with human attention.">
+        <div class="v2-copy serial-copy">
+          <p class="eyebrow">One load becomes a phone marathon</p>
+          <h2>Call. Explain. Hold.<br /><em>Write it down. Repeat.</em></h2>
+        </div>
+        <div class="serial-flow" aria-label="Sequential freight carrier calls">
+          <article class="load-ticket">
+            <small>LOAD 1842</small>
+            <strong>Zürich → Munich</strong>
+            <span>8,000 kg · dry van · Tuesday</span>
+          </article>
+          <div class="serial-line"><i></i></div>
+          <div class="carrier-sequence">
+            <article class="serial-call"><b>01</b><strong>Alpine</strong><span>no answer</span></article>
+            <article class="serial-call"><b>02</b><strong>Rhine</strong><span>CHF 1,650</span></article>
+            <article class="serial-call"><b>03</b><strong>Northstar</strong><span>callback</span></article>
+            <article class="serial-call"><b>04</b><strong>Atlas</strong><span>CHF 1,520</span></article>
+            <article class="serial-call"><b>05</b><strong>Vector</strong><span>tolls?</span></article>
+          </div>
+        </div>
+        <p class="serial-thesis">Human brokerage capacity scales with human attention.</p>
+      </section>
+
+      <section class="slide v2-insight" data-chapter="The bottleneck" data-notes="The carrier list already exists. The hard part is turning fragmented conversations into a comparable market. That is the infrastructure layer Pacta owns.">
+        <div class="insight-sentence">
+          <p class="eyebrow">The real bottleneck</p>
+          <h2>Finding carriers is easy.<br /><em>Negotiating with all of them isn’t.</em></h2>
+          <p>The freight market has supply. It lacks a scalable conversation layer.</p>
+        </div>
+        <div class="insight-transition" aria-hidden="true">
+          <div class="tiny-carriers"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="voice-bar"><span></span><span></span><span></span><span></span><span></span></div>
+        </div>
+      </section>
+
+      <section class="slide v2-intro" data-chapter="Meet Pacta" data-notes="That is why we built Pacta: AI-native negotiation infrastructure. One confirmed request becomes many simultaneous, evidence-backed conversations. The system creates a market around the buyer in real time.">
+        <div class="mascot-shell mascot-hero-shell" aria-label="Animated Pacta mascot">
+          <div class="mascot-glow" aria-hidden="true"></div>
+          <div class="mascot-3d" data-action="wave"></div>
+        </div>
+        <div class="v2-copy intro-copy-v2">
+          <p class="eyebrow">Meet Pacta</p>
+          <h2>One request in.<br /><em>A live market out.</em></h2>
+          <p class="v2-lede">AI-native infrastructure that calls, compares and negotiates.</p>
+        </div>
+        <div class="intro-proofline">
+          <span>Same request</span><i></i><span>Parallel calls</span><i></i><span>Verified leverage</span>
+        </div>
+      </section>
+
+      <section class="slide v2-contract" data-chapter="One market contract" data-notes="Before calls begin, Pacta freezes one complete load specification. Every carrier receives this exact confirmed revision. This is what makes the offers comparable and prevents five conversations from drifting into five different jobs.">
+        <div class="v2-copy contract-copy">
+          <p class="eyebrow">Before the first call</p>
+          <h2>One confirmed load<br /><em>becomes one<br />market contract.</em></h2>
+        </div>
+        <article class="market-contract-card">
+          <header><span>LOAD CONTRACT · 1842</span><b><i></i> Confirmed</b></header>
+          <div class="contract-route"><span>Zürich</span><i>→</i><span>Munich</span></div>
+          <div class="contract-fields">
+            <div><small>Equipment</small><strong>Dry van 53</strong></div>
+            <div><small>Weight</small><strong>8,000 kg</strong></div>
+            <div><small>Pickup</small><strong>Tue · 08–11</strong></div>
+            <div><small>Risk</small><strong>Critical</strong></div>
+          </div>
+          <footer>Exact immutable revision sent to every carrier</footer>
+        </article>
+        <div class="contract-stamp">ONE TRUTH · EVERY CALL</div>
+      </section>
+
+      <section class="slide v2-market" data-chapter="Live negotiation" data-notes="This is the hero demo. Pacta launches independent carrier conversations in parallel. Each one receives the same load and produces structured offer revisions while the center stays synchronized through verified state.">
+        <div class="market-kicker"><p class="eyebrow">The market, now live</p><h2>Three carriers.<br /><em>One synchronized negotiation.</em></h2></div>
+        <div class="v2-market-map">
+          <svg viewBox="0 0 1440 720" preserveAspectRatio="none" aria-hidden="true">
+            <path class="shipper-path" d="M260 360 C420 360 500 360 626 360" />
+            <path d="M814 360 C935 360 930 170 1080 170" />
+            <path d="M814 360 C960 360 945 360 1080 360" />
+            <path d="M814 360 C935 360 930 550 1080 550" />
+          </svg>
+          <div class="v2-party shipper-party"><span>AC</span><div><strong>Acme Manufacturing</strong><small><i></i> Load confirmed</small></div></div>
+          <div class="mascot-shell mascot-market-shell" aria-label="Animated Pacta mascot">
+            <div class="mascot-glow" aria-hidden="true"></div>
+            <div class="mascot-3d" data-action="spin"></div>
+            <b>Pacta</b>
+          </div>
+          <div class="v2-party carrier-party carrier-a"><span>A</span><div><strong>Alpine Haulage</strong><small><i></i> Direct · live</small></div><b>CHF 1,520</b></div>
+          <div class="v2-party carrier-party carrier-b"><span>R</span><div><strong>Rhine Cargo</strong><small><i></i> Flexible · live</small></div><b>CHF 1,650</b></div>
+          <div class="v2-party carrier-party carrier-c"><span>N</span><div><strong>Northstar Transit</strong><small><i></i> Scope unclear</small></div><b class="warn">CHF 1,390</b></div>
+        </div>
+        <div class="live-demo-pill"><i></i> LIVE SYSTEM · REPLAYABLE EVIDENCE</div>
+      </section>
+
+      <section class="slide v2-leverage" data-chapter="The calls compete" data-notes="EVIDENCE GATE: this remains a demo scenario until the exact real recording proves the carrier changed its own offer because Pacta cited verified leverage. In the pitch, play that causal audio here. Then pause. The deeper point: Pacta only shares stored comparable facts—it never invents a competing bid.">
+        <div class="v2-copy leverage-copy-v2">
+          <p class="eyebrow">Then the calls start learning from each other</p>
+          <h2>A quote becomes leverage.<br /><em>Leverage changes the market.</em></h2>
+        </div>
+        <div class="leverage-visual-v2">
+          <article class="source-offer-v2">
+            <small>VERIFIED · ALPINE</small>
+            <strong>CHF 1,520</strong>
+            <span>all-in · tolls · covered</span>
+          </article>
+          <div class="leverage-packet-v2"><span>verified fact</span><i>→</i></div>
+          <article class="negotiation-result-v2">
+            <small>RHINE CARGO · REVISED</small>
+            <div><span>CHF 1,650</span><i>→</i><strong>CHF 1,460</strong></div>
+            <footer><b>− CHF 190</b><span>terms preserved</span></footer>
+          </article>
+        </div>
+        <div class="truth-line"><span>Transcript cited</span><i></i><span>Scope compared</span><i></i><span>No invented bids</span></div>
+        <div class="scenario-badge">DEMO SCENARIO · REPLACE WITH RECORDED RUN</div>
+      </section>
+
+      <section class="slide v2-business" data-chapter="The business" data-notes="The first business is an AI-native freight broker. Pacta sits at the transaction layer: shipper demand comes in, carrier capacity is sourced and negotiated, the winning carrier is booked, and the brokerage earns the transaction margin. The advantage is not an unsupported market-size claim; it is that sourcing coverage and throughput are no longer tightly coupled to broker headcount. Measure time to first comparable quote, calls per load, negotiated improvement, booking rate and cost per sourced load.">
+        <div class="v2-copy business-copy">
+          <p class="eyebrow">The first business</p>
+          <h2>An AI-native<br /><em>freight broker.</em></h2>
+          <p class="v2-lede">Pacta earns where the transaction closes—not where the phone rings.</p>
+        </div>
+        <div class="transaction-flow">
+          <article><small>SHIPPER</small><strong>Freight demand</strong><span>confirmed load</span></article>
+          <i>→</i>
+          <article class="transaction-core"><small>PACTA</small><strong>Source + negotiate</strong><span>parallel market</span></article>
+          <i>→</i>
+          <article><small>CARRIER</small><strong>Booked capacity</strong><span>confirmed terms</span></article>
+        </div>
+        <div class="business-equation"><span>Shipper price</span><i>−</i><span>Carrier price</span><i>=</i><strong>Brokerage margin</strong></div>
+        <div class="scale-comparison">
+          <div><small>TRADITIONAL</small><strong>Capacity ∝ broker headcount</strong></div>
+          <div class="scale-pacta"><small>PACTA</small><strong>Capacity ∝ concurrent negotiations</strong></div>
+        </div>
+      </section>
+
+      <section class="slide v2-config" data-chapter="Beyond freight" data-notes="Freight is where we prove the engine. Configuration is how Pacta becomes infrastructure. A market config defines three things: the job that must be confirmed, the offer suppliers must provide, and the policy for comparability, leverage and recommendation. Freight and contractor bids are implemented and pass the same compiler. Moving is shown as an illustrative next config, not a live configuration. New markets still require authoring, tests and publication—not magic zero-work switching.">
+        <div class="config-showcase" data-market="freight">
+          <header class="config-header">
+            <div><p class="eyebrow">The market changes. Pacta stays.</p><h2 id="configTitle">Pacta Freight</h2></div>
+            <div class="config-tabs" role="tablist" aria-label="Use-case configurations">
+              <button class="active" data-config="freight"><i></i>Freight</button>
+              <button data-config="contractor"><i></i>Contractors</button>
+              <button data-config="moving"><i></i>Moving</button>
+            </div>
+          </header>
+          <div class="config-stage">
+            <article class="config-card config-job-card">
+              <header><small>JOB CONTRACT</small><strong id="jobName">Load definition</strong></header>
+              <div id="jobFields" class="config-fields"></div>
+              <footer>What must be known + confirmed</footer>
+            </article>
+            <div class="config-mascot-column">
+              <div class="mascot-shell mascot-config-shell" aria-label="Animated Pacta mascot">
+                <div class="mascot-glow" aria-hidden="true"></div>
+                <div class="mascot-3d" data-action="curious" id="configMascot"></div>
+              </div>
+              <strong>Same engine</strong>
+              <span>immutable · evidenced · parallel</span>
+            </div>
+            <article class="config-card config-offer-card">
+              <header><small>OFFER CONTRACT</small><strong id="offerName">Quote definition</strong></header>
+              <div id="offerFields" class="config-fields"></div>
+              <footer>What becomes comparable + leverage</footer>
+            </article>
+          </div>
+          <div class="fixed-loop"><span>CONFIRM</span><i>→</i><span>CALL</span><i>→</i><span>COMPARE</span><i>→</i><span>NEGOTIATE</span><i>→</i><span>RECOMMEND</span></div>
+          <div class="config-status"><b id="configBadge">IMPLEMENTED CONFIG</b><span id="configBehavior">Missing tolls or coverage → not comparable</span></div>
+        </div>
+      </section>
+
+      <section class="slide v2-final" data-chapter="Pacta" data-notes="Land this slowly. Freight is where we prove the engine. Configuration is how Pacta becomes infrastructure. The market still speaks by phone; now software can negotiate back. Stop there.">
+        <div class="final-copy-v2">
+          <p class="eyebrow">Pacta</p>
+          <h1>Freight proves<br /><em>the engine.</em></h1>
+          <h3>Configuration makes it infrastructure.</h3>
+          <p>The market still speaks by phone.<br />Now software can negotiate back.</p>
+        </div>
+        <div class="final-mascot-v2">
+          <div class="final-rays" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="mascot-shell mascot-final-shell" aria-label="Animated Pacta mascot">
+            <div class="mascot-glow" aria-hidden="true"></div>
+            <div class="mascot-3d" data-action="happy"></div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="controls">
+        <div class="progress"><i id="progress"></i></div>
+        <span id="counter">01 / 10</span>
+        <div class="control-buttons">
+          <button id="notesButton" aria-label="Toggle presenter notes" title="Presenter notes (N)">N</button>
+          <button id="fullscreenButton" aria-label="Toggle fullscreen" title="Fullscreen (F)">⛶</button>
+          <button id="previousButton" aria-label="Previous slide">←</button>
+          <button id="nextButton" aria-label="Next slide">→</button>
+        </div>
+      </footer>
+
+      <aside class="speaker-notes" id="speakerNotes" aria-live="polite">
+        <header><strong>Presenter note</strong><button id="closeNotes" aria-label="Close notes">×</button></header>
+        <p id="notesCopy"></p>
+      </aside>
+    </main>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/vendor/three.module.js",
+          "three/addons/": "/vendor/addons/"
+        }
+      }
+    </script>
+    <script src="deck.js"></script>
+    <script src="config-showcase.js"></script>
+    <script type="module" src="mascot-stage.js"></script>
+  </body>
+</html>

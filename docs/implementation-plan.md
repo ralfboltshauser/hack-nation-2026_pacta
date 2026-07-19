@@ -17,10 +17,10 @@ Verified on 2026-07-19:
 - The manually created Supabase project is healthy. Seven migrations apply from a blank PostgreSQL 17 database and on the hosted project. The private bucket, anonymous Auth, membership-scoped RLS, and Realtime access were functionally tested.
 - Stripe Projects is initialized locally for inventory, but its Supabase resource creation failed at the provider boundary. The manual Supabase project is the accepted fallback; do not retry the broken resource.
 - The separate Vercel project `pacta-negotiator` uses `apps/web` as its monorepo root and is healthy at `https://pacta.openexp.dev`; the unrelated `pacta-character` project was not mutated. Production Supabase, model, security, and disarmed telephony variables are present. Its default function region is now `dub1`, beside Supabase Ireland; the change takes effect with the next deployment.
-- The private ElevenLabs customer and supplier agents point to the production Custom LLM endpoint. The workspace post-call webhook is HMAC-signed and its secret is stored only in Vercel. The supplier agent permits a signed text-only override for the no-phone harness.
+- The current private ElevenLabs customer and supplier agents still point to the production Custom LLM endpoint as a rollback path. ADR 0002 now selects separate native ElevenLabs staging agents with typed milestone webhook tools; production agent IDs must not switch until the safe gates pass. The workspace post-call webhook is HMAC-signed and its secret is stored only in Vercel.
 - Outbound telephony is fail-closed unless `PACTA_OUTBOUND_CALLS_ENABLED` is exactly `true`. It remains `false`; no friend phone has been called.
-- The original Custom LLM failure is fixed: descriptive AI SDK structured output plus Gemini 2.5 Flash Lite completed both deployed customer turns without a retry. A terminal-conversation commit guard passes against hosted Postgres.
-- The safe three-supplier trace exposed shared-session-lock serialization, not model serialization. Evidence inserts are now bulked, exact lock timings are instrumented, and the `dub1` deployment plus repeat trace are the next gate.
+- The original Custom LLM shape, late-commit, shared-session-lock, and cross-region latency failures are fixed and evidenced. A later safe three-supplier trace completed each response in about 2.2–3.6 seconds, but two schema-valid model outputs still omitted required offer facts. This proved the remaining defect is the response-critical exhaustive extraction boundary, not Postgres or ElevenLabs transport.
+- A prior native webhook experiment already proved cross-conversation offer propagation and comparability guards. A new disposable text-only native-agent spike produced an exact nested job/offer payload including objects, arrays, two line items, booleans, integers, and an explicitly empty conditions array. No phone was called and all temporary agent/tool resources were deleted.
 - Authenticated private Realtime Broadcast and durable HTTP replay are verified in production. A first-connect `MissingPartition` race was reproduced, so the UI now retries the subscription with bounded backoff and relies on replay for correctness.
 - A clean local schema rebuild, automated tests, lint, typecheck, production build, Playwright UI test, GitHub CI, production TLS/liveness, and production database readiness pass. The complete deployed safe harness, exact deployed ElevenLabs file bridge, and real supplier-call behavior still require provider proof.
 
@@ -54,12 +54,12 @@ There is one deployable application: `apps/web`. API routes live in that Next.js
 | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | Provisioning inventory and credential pull        | Stripe Projects when the account is eligible; direct provider provisioning with a checked-in inventory is the accepted fallback   |
 | Git/CI source                                     | Public GitHub repository `ralfboltshauser/hack-nation-2026_pacta`                                                                 |
-| Application, server actions, APIs, Custom LLM SSE | Next.js on Vercel                                                                                                                 |
+| Application, server actions, milestone/state APIs | Next.js on Vercel                                                                                                                 |
 | Database, Auth, Realtime, private files           | One new Supabase project                                                                                                          |
 | Schema and migrations                             | Drizzle with reviewed SQL migrations                                                                                              |
 | Voice runtime and native outbound calls           | ElevenLabs Agents                                                                                                                 |
 | Underlying carrier / direct Twilio REST           | Twilio remains behind ElevenLabs for the MVP; direct app access is conditional and must not create a second call-origination path |
-| Reducer/response models                           | Vercel AI Gateway or explicitly selected upstream                                                                                 |
+| Native conversation model                         | ElevenLabs native `gemini-3.1-flash-lite` initially; pin and re-evaluate through provider tests                                   |
 | Local logic proof                                 | Automated tests against local Next.js                                                                                             |
 | First public provider proof                       | Vercel Preview, not a Quick Tunnel                                                                                                |
 | Production domain                                 | `pacta.openexp.dev` on the existing Vercel DNS zone                                                                               |
@@ -75,10 +75,10 @@ flowchart TD
     M2 --> M3["M3 — Use-case config compiler"]
     M3 --> M4["M4 — Database kernel"]
     M4 --> M5["M5 — Auth, events, realtime app spine"]
-    M5 --> M6["M6 — Local Custom LLM contract"]
-    M6 --> M7["M7 — Public Vercel Preview endpoint"]
-    M7 --> M8["M8 — ElevenLabs staging agents"]
-    M8 --> M9["M9 — Customer ElevenLabs chat + files"]
+    M5 --> M6["M6 — Local milestone command kernel"]
+    M6 --> M7["M7 — Public Vercel tool endpoints"]
+    M7 --> M8["M8 — Native ElevenLabs staging agents"]
+    M8 --> M9["M9 — Native tool reliability + files"]
     M9 --> M10["M10 — Safe text-only provider E2E"]
     M10 --> M11["M11 — One supplier phone negotiation"]
     M11 --> M12["M12 — Parallel calls and leverage"]
@@ -111,11 +111,11 @@ Never put secrets, phone numbers, raw recordings, full transcripts, brain tokens
 | M3  | Use-case-agnostic config compiler                            | Freight and non-freight fixtures compile through identical code                                                           |
 | M4  | Drizzle/Postgres kernel                                      | Blank migration, invariants, idempotency, and event replay tests pass                                                     |
 | M5  | Authenticated realtime application spine                     | A committed synthetic event reaches UI and gap replay repairs it                                                          |
-| M6  | Correct local Custom LLM endpoint                            | Fixture request reduces once and streams valid SSE                                                                        |
-| M7  | Public preview integration URL                               | External `curl -N` observes streaming through Vercel                                                                      |
-| M8  | Customer and supplier ElevenLabs staging agents              | Agent simulations and one text turn reach our handler                                                                     |
-| M9  | Customer ElevenLabs chat and document intake                 | Typed/PDF/image turns produce evidenced revisions and explicit confirmation                                               |
-| M10 | Safe provider E2E without telephony                          | Customer plus three supplier text conversations exercise the complete reducer and closeout                                |
+| M6  | Local milestone command kernel                               | Typed fixtures validate, commit, replay idempotently, and reject invalid lifecycle transitions                            |
+| M7  | Public deployed tool endpoints                               | Authenticated external requests reach short Vercel routes and committed events reach Realtime                             |
+| M8  | Native customer and supplier staging agents                  | Reproducible agents call typed immediate tools with server-owned identity                                                 |
+| M9  | Native tool reliability and document intake                  | Repeated complete/incomplete evals plus typed/PDF/image turns meet the acceptance matrix                                  |
+| M10 | Safe provider E2E without telephony                          | Customer plus three supplier text conversations exercise milestone tools and full closeout                                |
 | M11 | One real supplier negotiation                                | Exact job is presented and one comparable offer is captured                                                               |
 | M12 | Three parallel suppliers with live leverage                  | One offer measurably affects another still-open negotiation                                                               |
 | M13 | Closed commercial loop                                       | Customer selects, winner confirms, losers are notified                                                                    |
@@ -394,77 +394,74 @@ Green only when the browser reconstructs the same state from projection + replay
 
 ---
 
-## M6 — Local HTTP Custom LLM contract
+## M6 — Local native milestone command kernel
 
 **Depends on:** M5
 
 ### Implement
 
-- Add `POST /api/elevenlabs/llm/v1/chat/completions`.
-- Implement OpenAI-compatible streamed Chat Completions output.
-- Authenticate a provider secret plus a conversation-scoped opaque brain token.
-- Implement:
-  - accumulated-history canonicalization;
-  - logical finalized-turn detection;
-  - `conversation_turn_executions` claim/replay;
-  - reducer-before-response;
-  - schema/transition validation;
-  - transactional revisions/events/deliveries;
-  - deterministic context assembly;
-  - response streaming and completed-turn persistence;
-  - aborted/interrupted generation handling.
-- Add sanitized request fixtures for initial turn, retry, tool continuation, interruption, and transcript correction.
-- Add `/api/elevenlabs/webhooks/post-call` with raw-body signature verification and reconciliation stubs.
-- Add `/api/sessions/:id/reconcile` as an authenticated recovery endpoint/action.
+- Define the supported config-to-ElevenLabs tool-schema dialect: recursive objects, arrays, required fields, literals/enums, strings, booleans, integers, and numbers. Reject unsupported composition instead of silently weakening it.
+- Compile complete, non-derived job and offer request schemas plus prompt fragments from the pinned use-case config.
+- Extract small, reusable command functions from the existing persistence layer for:
+  - `submit_confirmed_job`;
+  - `submit_offer`;
+  - `get_customer_state`;
+  - `get_negotiation_state`;
+  - `select_offer`;
+  - `commit_selected_offer`;
+  - `record_supplier_outcome`.
+- Authenticate a conversation-scoped secret header and resolve all session, conversation, negotiation, party, and config authority server-side.
+- Revalidate complete documents against the full pinned JSON Schema, compute derived fields server-side, enforce lifecycle transitions, and return exact missing/invalid paths.
+- Make writes naturally idempotent from canonical payload/evidence hashes and monotonic terminal invariants; do not assume ElevenLabs delivers webhooks exactly once.
+- Keep session-event sequence locking around only the sequence allocation and insert. Do not place transcript parsing, model calls, or many evidence writes inside a shared session lock.
+- Retain the existing post-call webhook and reconciliation as audit/recovery. Keep the Custom LLM route working but outside the selected native path until rollback can be retired.
 
 ### Verify
 
-- Local contract tests send a fixture and receive valid SSE chunks.
-- One finalized turn creates exactly one revision under duplicate requests.
-- A tool continuation does not reduce the caller again.
-- An interrupted generation does not persist a final assistant turn or delivered cursor.
-- New committed shared state is present in the next response context.
-- Invalid auth/brain tokens fail closed without mutation.
+- Freight and non-freight configs compile through the same tool-schema code; unsupported schema features fail clearly.
+- Complete job/offer fixtures commit the exact configured document and return the accepted immutable revision.
+- Incomplete, malformed, stale, cross-tenant, and wrong-phase requests fail without mutation and return safe actionable errors.
+- Duplicate identical requests replay one revision/event; conflicting retries cannot overwrite a current decision or award.
+- `get_negotiation_state` returns anonymous leverage only when server-computed comparison scope permits it.
+- Invalid auth or scoped tokens fail closed without mutation.
 
 ### Cleanup
 
 - Remove raw provider payload logs and temporary tokens.
 - Keep only sanitized fixtures with a documented redaction process.
+- Do not delete the rollback Custom LLM route yet.
 
 ### Exit gate
 
-Green only when the handler is correct locally without any real ElevenLabs agent.
+Green only when every command is correct locally without any real ElevenLabs agent or phone call.
 
 ---
 
-## M7 — Public streaming integration through Vercel Preview
+## M7 — Public milestone-tool integration through Vercel
 
 **Depends on:** M6
 
 ### Decision
 
-Do not use a Cloudflare Quick Tunnel for the Custom LLM proof. Current Cloudflare documentation says Quick Tunnels do not support Server-Sent Events, while the ElevenLabs handler must stream SSE.
+Use short HTTPS Next.js route handlers on the existing Vercel project. No streaming endpoint, Cloudflare tunnel, Supabase Edge Function, workflow engine, or long-lived application request is required for the native tool path.
 
-Use a Vercel Preview deployment as the first public HTTPS endpoint. Prefer a stable branch preview URL for the staging agent. This tests the actual function runtime, headers, streaming, timeouts, and environment behavior.
-
-If local public tunnelling is later required, use only a named/paid tunnel proven to pass streaming unchanged; keep it outside the production path.
+Use a Vercel Preview deployment for disposable staging tools and the production domain only after their contract is proven. The existing Quick Tunnel experiment remains useful evidence, not production infrastructure.
 
 ### Implement
 
-- Deploy the M6 endpoint to a dedicated integration branch preview.
+- Deploy the M6 endpoints to a dedicated integration preview.
 - Configure preview-only secrets.
 - Add an external smoke script that:
   - checks readiness;
-  - posts an authenticated fixture;
-  - observes incremental SSE with `curl -N`;
-  - validates no proxy buffering;
+  - posts authenticated success, replay, invalid-schema, and wrong-phase fixtures;
+  - verifies the scoped identity cannot be overridden by request JSON;
   - tests post-call signature rejection/acceptance.
 - Capture Vercel function timings/log correlation IDs without content/secrets.
 
 ### Verify
 
-- The first SSE chunk arrives before the function completes.
-- Headers/content type match ElevenLabs’ expected Chat Completions contract.
+- Responses remain within the configured ElevenLabs webhook timeout with headroom.
+- Headers and JSON bodies match the generated standalone webhook-tool contracts.
 - Preview database writes and Realtime updates appear in the authorized UI.
 - Function duration/memory remain within the selected Vercel plan limits.
 - A deployment with a missing required env variable fails readiness clearly.
@@ -477,11 +474,11 @@ If local public tunnelling is later required, use only a named/paid tunnel prove
 
 ### Exit gate
 
-Green only when the public Vercel handler streams correctly and is safe to give to ElevenLabs.
+Green only when the public Vercel handlers validate, commit, replay, and fail closed correctly and are safe to give to ElevenLabs.
 
 ---
 
-## M8 — Create and connect ElevenLabs staging agents
+## M8 — Create and connect native ElevenLabs staging agents
 
 **Depends on:** M7
 
@@ -489,15 +486,17 @@ Green only when the public Vercel handler streams correctly and is safe to give 
 
 - Pin `@elevenlabs/cli` in the repository; do not depend on an unversioned global install.
 - Initialize checked-in ElevenLabs configuration under `config/elevenlabs`.
-- Create two thin staging agents because their call purposes differ:
+- Create two separate native staging agents because their call purposes differ:
   - Pacta Customer;
   - Pacta Supplier.
-- Configure both to use the Vercel Preview Custom LLM endpoint.
+- Configure both with the pinned native model and attach only their generated standalone webhook tool IDs.
 - Keep call ownership singular: ElevenLabs' native Twilio outbound endpoint originates MVP calls. Do not add a parallel `twilio.calls.create` path merely because direct Twilio credentials exist.
-- Keep use-case behavior out of the ElevenLabs shell; compile it into per-session context.
+- Compile prompts, questions, required milestones, and tool schemas from each published use-case config version. Keep freight fields out of engine code.
+- Pass `system__conversation_id` and any provider-supported conversation history as dynamic tool parameters. Pass opaque Pacta session/negotiation correlation as server-created dynamic variables and the scoped secret only in a secret dynamic header.
+- Use `execution_mode: immediate`, pre-tool speech off for authoritative writes, a bounded response timeout, and passthrough error handling so validation failures return to the conversation.
+- Prompt hard gates: never claim job confirmation, offer submission, selection, commitment, or closeout before the corresponding successful tool result.
 - Enable only necessary built-in system tools:
   - `end_call`;
-  - `skip_turn`;
   - `voicemail_detection` for outbound supplier calls;
   - optional DTMF only if a real test requires it.
 - Configure turn timeout/eagerness, voice, interruption behavior, AI disclosure, and recording according to the accepted policy.
@@ -510,18 +509,16 @@ Green only when the public Vercel handler streams correctly and is safe to give 
 
 ### Tool/API decision
 
-Do not create ElevenLabs webhook tools merely to mirror job/offer facts. The Custom LLM reducer already observes every finalized turn.
+Use narrow business milestone/state tools, not a generic database-write tool and not one reporting tool per conversational turn. `submit_confirmed_job` and `submit_offer` submit complete configured documents. `get_*_state` returns verified role-scoped state. Selection and commitment remain separate tools because they authorize different irreversible transitions.
 
-Built-in `end_call`, `skip_turn`, voicemail, and DTMF do not need Next.js tool endpoints. Create a server-tool endpoint only if a later explicit external side effect requires one. Any such route must have JSON Schema validation, provider authentication, idempotency, authorization, and an audit event.
-
-Required Next.js provider endpoints at this stage are the Custom LLM route and post-call webhook, not general-purpose database-write tools.
+Built-in `end_call`, voicemail, and DTMF do not need Next.js endpoints. The model may end only after durable state proves the correct terminal outcome.
 
 ### Verify
 
 - Checked-in agent config can be dry-run/pushed reproducibly.
 - The customer and supplier simulations pass.
-- One ElevenLabs text conversation reaches the preview handler with the expected scoped body/auth.
-- The handler can return a normal response and `skip_turn`/`end_call` tool calls in contract tests.
+- One ElevenLabs text conversation reaches each preview milestone/state handler with exact generated nested parameters and server-owned scoped identity.
+- Returned validation errors cause a clarification; returned success is acknowledged without inventing a different revision or state.
 - Agent IDs are stored only in scoped environment variables.
 
 ### Cleanup
@@ -535,30 +532,36 @@ Green only when both staging agents are reproducible from source and a real prov
 
 ---
 
-## M9 — Prove customer ElevenLabs chat and files
+## M9 — Prove native tool reliability, customer chat, and files
 
 **Depends on:** M8
 
 ### Implement
 
 - Start the authenticated text-only customer agent through a signed ElevenLabs URL.
-- Bind the provider conversation ID to the pre-created durable conversation and scoped brain token.
+- Bind the provider conversation ID to the pre-created durable conversation and scoped tool token.
 - Send typed text through the ElevenLabs socket.
-- For PDF/image input, stage a private durable copy, upload the same file to ElevenLabs, and correlate the multimodal turn with an opaque artifact marker.
-- Verify artifact ownership and digest before giving the native file to the application model.
+- For PDF/image input, stage a private durable copy, record its digest, upload the same file to ElevenLabs, and correlate the provider file/conversation with the artifact row.
+- Compile the complete customer job tool schema and configured clarification instructions into the native agent version.
 - Keep the chat open through sourcing, comparison, selection, and final confirmed-award update.
+- Use ElevenLabs tool/agent tests plus independent text conversations to run at least:
+  - 20 complete job cases that must call `submit_confirmed_job` once with exact payloads;
+  - 20 incomplete job cases that must not call it and must ask for the missing field;
+  - 20 complete final quote cases that must call `submit_offer` with every required comparable field;
+  - malformed/stale endpoint responses that must produce clarification rather than false success.
 
 ### Verify
 
-- A real deployed typed turn reaches the Custom LLM and reduces exactly once under retry.
-- A real deployed PDF/image turn creates attachment-backed evidence without exposing a public file URL.
+- A real deployed typed turn calls the exact milestone tool once and commits one revision under duplicate delivery.
+- A real deployed PDF/image turn produces the exact complete job payload and attachment correlation without exposing a public file URL.
 - Missing configured fields drive the next question.
 - A complete job still cannot source until the customer explicitly confirms it.
-- A supplier event committed while chat is open appears in the UI immediately and in the agent's next truthful turn.
+- A supplier event committed while chat is open appears in the UI immediately and in the agent's next `get_customer_state`-backed truthful turn.
+- All repeated reliability gates pass; report the raw numerator/denominator rather than “seems reliable.”
 
 ### Cleanup and exit gate
 
-Delete disposable artifacts/conversations after evidence capture. Green only when ElevenLabs chat—not a parallel app chat route—owns the visible intake and the private artifact bridge works end to end.
+Delete disposable artifacts, conversations, agents, and tools after evidence capture. Green only when ElevenLabs chat—not a parallel app chat route—owns the visible intake, the private artifact correlation works end to end, and every repeated reliability threshold is green.
 
 ---
 
@@ -568,15 +571,16 @@ Delete disposable artifacts/conversations after evidence capture. Green only whe
 
 ### Implement
 
-- Run the real customer chat plus three concurrent supplier agents in text-only test conversations against the deployed Custom LLM.
+- Run the real native customer chat plus three concurrent native supplier agents in text-only test conversations against the deployed milestone/state tools.
 - Script supplier behaviors for a complete offer, a material exclusion requiring clarification, and a negotiable offer changed by verified leverage.
-- Exercise customer selection, selected-supplier exact commitment, loser closeout, `skip_turn`, `end_call`, post-call reconciliation, and event replay without dialing PSTN.
+- Exercise customer selection, selected-supplier exact commitment, loser closeout, `end_call`, post-call reconciliation, and event replay without dialing PSTN.
 
 ### Verify
 
 - One explicitly confirmed job is reused across all three supplier contexts.
-- Offers remain structured/comparable, leverage remains anonymous/evidenced, and retries create no duplicate revisions.
+- Offers remain structured/comparable, leverage comes only from `get_negotiation_state`, and retries create no duplicate revisions.
 - Customer selection does not become an award until the selected supplier explicitly accepts the exact terms.
+- No agent claims a milestone before its successful tool result.
 - The text-only run closes every conversation and the session without enabling outbound calls.
 
 ### Cleanup
@@ -793,18 +797,12 @@ ELEVENLABS_SUPPLIER_AGENT_ID
 ELEVENLABS_PHONE_NUMBER_ID
 ELEVENLABS_WEBHOOK_SECRET
 PACTA_BRAIN_MODEL
+PACTA_NATIVE_TOOL_CAPABILITY_SECRET
 PACTA_DEMO_ACCESS_KEY
 PACTA_OUTBOUND_CALLS_ENABLED
 ```
 
-The Custom LLM endpoint authenticates every turn with a random, hashed,
-expiring `brain_token` scoped to the exact workspace, session, conversation,
-purpose, and negotiation. The token is delivered in ElevenLabs'
-`elevenlabs_extra_body`; an invalid or expired capability is rejected before
-model generation. For the `chat_completions` API type, configure ElevenLabs
-with the base URL ending in `/api/v1`; ElevenLabs appends
-`/chat/completions` itself. Supplying the full endpoint silently produces a
-duplicated `/chat/completions/chat/completions` request path.
+`PACTA_BRAIN_MODEL` remains only while the superseded Custom LLM endpoint is a rollback path. Native milestone tools authenticate with an expiring capability scoped to the exact workspace, session, conversation purpose, negotiation when applicable, and pinned config version. ElevenLabs sends it only through a secret dynamic request header. Request JSON cannot override those claims, and reconnects must not invalidate still-live conversations. Retire the old brain-token/env contract only after native production agents pass and the rollback window closes.
 
 Conditional server-only Twilio variables—required only if M9 proves that the application itself must call Twilio REST APIs:
 
@@ -824,7 +822,7 @@ Do not deploy the ambiguous temporary names `TWILIO_SID` or `TWILIO_CLIENT_SECRE
 ### Verify
 
 - `https://pacta.openexp.dev/api/health/live` and readiness pass.
-- Production `curl -N` proves Custom LLM SSE is not buffered.
+- Production milestone/state tool probes validate JSON success, replay, and fail-closed responses within the webhook timeout.
 - DNS/TLS resolve to the intended Vercel project.
 - A production agent test reaches the production handler and webhook.
 - Browser bundles contain no server-only key.
@@ -873,7 +871,7 @@ Green only when production is independently healthy through its custom domain wi
 
 ### Cleanup
 
-- End/reconcile every call and revoke all brain tokens.
+- End/reconcile every call and revoke all native tool capabilities and remaining rollback brain tokens.
 - Delete or retain recordings/transcripts strictly according to consent.
 - Remove friend phone numbers from fixtures/logs/evidence.
 - Delete temporary test sessions, Storage files, preview variables, duplicate agents, and unused provider resources.
@@ -905,7 +903,10 @@ The MVP is done only when all milestone gates are green and:
 - [Cloudflare Quick Tunnel limitations](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/)
 - [Supabase Broadcast](https://supabase.com/docs/guides/realtime/broadcast)
 - [Supabase database overview](https://supabase.com/docs/guides/database/overview)
-- [ElevenLabs Custom LLM](https://elevenlabs.io/docs/eleven-agents/customization/llm/custom-llm)
+- [ElevenLabs webhook tools](https://elevenlabs.io/docs/eleven-agents/customization/tools/webhook-tools)
+- [ElevenLabs agent testing](https://elevenlabs.io/docs/eleven-agents/customization/agent-testing)
+- [ElevenLabs dynamic variables](https://elevenlabs.io/docs/eleven-agents/customization/personalization/dynamic-variables)
+- [ElevenLabs Custom LLM rollback contract](https://elevenlabs.io/docs/eleven-agents/customization/llm/custom-llm)
 - [ElevenLabs native outbound call](https://elevenlabs.io/docs/eleven-agents/api-reference/twilio/outbound-call)
 - [Twilio API request authentication](https://www.twilio.com/docs/usage/requests-to-twilio)
 - [Twilio API key types and permissions](https://www.twilio.com/docs/iam/api-keys)

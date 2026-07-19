@@ -1,5 +1,5 @@
 import contractorBids from "../../../config/use-cases/contractor-bids/0.1.0.json";
-import freightBrokerage from "../../../config/use-cases/freight-brokerage/0.1.0.json";
+import freightBrokerage from "../../../config/use-cases/freight-brokerage/0.2.0.json";
 
 import { useCaseConfigSchema } from "./schema";
 

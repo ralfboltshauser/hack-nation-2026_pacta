@@ -1,5 +1,7 @@
 # HTTP Custom LLM MVP blueprint
 
+> **Superseded for the MVP.** ADR [`../decisions/0002-native-elevenlabs-milestone-tools.md`](../decisions/0002-native-elevenlabs-milestone-tools.md) selects native ElevenLabs agents with typed milestone webhook tools. This blueprint remains as implementation history and a rollback reference.
+
 > Historical blueprint note: the original version assumed a long-lived customer phone call and an undecided chat fallback. The implemented contract uses an ElevenLabs text-only customer agent with a private artifact-marker bridge, plus three supplier voice agents. See [`../call-flow.md`](../call-flow.md) and [`../decisions/0001-http-custom-llm-mvp.md`](../decisions/0001-http-custom-llm-mvp.md) for current decisions.
 
 Status: proposed implementation blueprint  

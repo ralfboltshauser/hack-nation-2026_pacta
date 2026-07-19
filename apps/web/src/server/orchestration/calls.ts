@@ -21,10 +21,15 @@ export function outboundCallsEnabled() {
 }
 
 function agentId(purpose: string) {
+  const nativeRuntime = process.env.PACTA_ELEVENLABS_RUNTIME === "native_tools";
   const value =
     purpose === "customer_intake"
-      ? process.env.ELEVENLABS_CUSTOMER_AGENT_ID
-      : process.env.ELEVENLABS_SUPPLIER_AGENT_ID;
+      ? nativeRuntime
+        ? process.env.ELEVENLABS_NATIVE_CUSTOMER_AGENT_ID
+        : process.env.ELEVENLABS_CUSTOMER_AGENT_ID
+      : nativeRuntime
+        ? process.env.ELEVENLABS_NATIVE_SUPPLIER_AGENT_ID
+        : process.env.ELEVENLABS_SUPPLIER_AGENT_ID;
   if (!value)
     throw new Error(`No ElevenLabs agent is configured for ${purpose}.`);
   return value;
@@ -58,12 +63,18 @@ export async function executeOutboundCall(conversationId: string) {
         providerConversationId: row.conversation.providerConversationId,
       };
     }
-    const brainToken = createBrainToken();
+    const nativeRuntime =
+      process.env.PACTA_ELEVENLABS_RUNTIME === "native_tools";
+    const brainToken = nativeRuntime ? null : createBrainToken();
     await db
       .update(conversations)
       .set({
-        brainTokenHash: hash(brainToken),
-        brainTokenExpiresAt: new Date(Date.now() + 3 * 60 * 60_000),
+        ...(brainToken
+          ? {
+              brainTokenHash: hash(brainToken),
+              brainTokenExpiresAt: new Date(Date.now() + 3 * 60 * 60_000),
+            }
+          : { brainTokenExpiresAt: new Date(0) }),
         status: "initiating",
       })
       .where(eq(conversations.id, conversationId));
@@ -73,20 +84,25 @@ export async function executeOutboundCall(conversationId: string) {
         agentId: agentId(row.conversation.purposeKey),
         agentPhoneNumberId: phoneNumberId,
         toNumber: row.party.phoneE164,
-        brainToken,
-        context: {
-          workspace_id: row.conversation.workspaceId,
-          session_id: row.conversation.sessionId,
-          conversation_id: row.conversation.id,
-          purpose: row.conversation.purposeKey as
-            | "customer_intake"
-            | "supplier_negotiation"
-            | "supplier_commitment"
-            | "supplier_closeout",
-          ...(row.conversation.negotiationId
-            ? { negotiation_id: row.conversation.negotiationId }
-            : {}),
-        },
+        runtime: nativeRuntime ? "native_tools" : "custom_llm",
+        ...(brainToken
+          ? {
+              brainToken,
+              context: {
+                workspace_id: row.conversation.workspaceId,
+                session_id: row.conversation.sessionId,
+                conversation_id: row.conversation.id,
+                purpose: row.conversation.purposeKey as
+                  | "customer_intake"
+                  | "supplier_negotiation"
+                  | "supplier_commitment"
+                  | "supplier_closeout",
+                ...(row.conversation.negotiationId
+                  ? { negotiation_id: row.conversation.negotiationId }
+                  : {}),
+              },
+            }
+          : {}),
         dynamicVariables: { party_name: row.party.displayName },
         callRecordingEnabled: false,
       });
@@ -144,7 +160,10 @@ export async function executeOutboundCall(conversationId: string) {
   }
 }
 
-export async function executeSessionCalls(sessionId: string) {
+export async function executeSessionCalls(
+  sessionId: string,
+  purposeKey: "customer_intake" | "supplier_negotiation",
+) {
   const { db, client } = createDatabase();
   try {
     const rows = await db
@@ -153,7 +172,7 @@ export async function executeSessionCalls(sessionId: string) {
       .where(
         and(
           eq(conversations.sessionId, sessionId),
-          eq(conversations.purposeKey, "supplier_negotiation"),
+          eq(conversations.purposeKey, purposeKey),
         ),
       );
     return Promise.allSettled(rows.map((row) => executeOutboundCall(row.id)));
@@ -164,7 +183,7 @@ export async function executeSessionCalls(sessionId: string) {
 
 export async function runSessionAction(
   sessionId: string,
-  actionType: "call_suppliers",
+  actionType: "call_customer" | "call_suppliers",
 ) {
   if (!outboundCallsEnabled())
     return { skipped: true, reason: "outbound_calls_disabled" } as const;
@@ -176,12 +195,14 @@ export async function runSessionAction(
       .from(sessions)
       .where(eq(sessions.id, sessionId));
     if (!session) throw new Error("Session not found.");
-    const [job] = await db
-      .select({ status: jobs.status })
-      .from(jobs)
-      .where(eq(jobs.sessionId, sessionId));
-    if (job?.status !== "confirmed")
-      throw new Error("Supplier calls require an explicitly confirmed job.");
+    if (actionType === "call_suppliers") {
+      const [job] = await db
+        .select({ status: jobs.status })
+        .from(jobs)
+        .where(eq(jobs.sessionId, sessionId));
+      if (job?.status !== "confirmed")
+        throw new Error("Supplier calls require an explicitly confirmed job.");
+    }
     const [action] = await db
       .insert(sessionActions)
       .values({
@@ -198,7 +219,12 @@ export async function runSessionAction(
       .returning();
     if (!action) return { skipped: true };
     try {
-      const results = await executeSessionCalls(sessionId);
+      const results = await executeSessionCalls(
+        sessionId,
+        actionType === "call_customer"
+          ? "customer_intake"
+          : "supplier_negotiation",
+      );
       await db
         .update(sessionActions)
         .set({ status: "completed", result: results, completedAt: new Date() })

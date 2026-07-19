@@ -20,9 +20,80 @@ async function freight() {
   return compileUseCaseConfig(JSON.parse(raw) as unknown).document;
 }
 
+async function shortFreight() {
+  const raw = await readFile(
+    resolve(
+      import.meta.dirname,
+      "../../../config/use-cases/freight-brokerage/0.2.0.json",
+    ),
+    "utf8",
+  );
+  return compileUseCaseConfig(JSON.parse(raw) as unknown).document;
+}
+
 const evidenceQuote = "directly stated by test participant";
 
 describe("domain reducer", () => {
+  it("accepts the short freight job and derives a comparable total from one natural quote", async () => {
+    const config = await shortFreight();
+    const job = reduceJobDocument(
+      config,
+      {},
+      {
+        jobObservations: [
+          ["/origin", "Zurich"],
+          ["/destination", "Munich"],
+          ["/pickupTime", "tomorrow at 8am"],
+        ].map(([path, value]) => ({ path, value, evidenceQuote })),
+        offerObservations: [],
+        signals: {},
+      },
+    );
+
+    expect(job).toMatchObject({
+      valid: true,
+      missingRequiredPaths: [],
+      data: {
+        origin: "Zurich",
+        destination: "Munich",
+        pickupTime: "tomorrow at 8am",
+      },
+    });
+
+    const offer = reduceOfferDocument(
+      config,
+      job.data,
+      {},
+      {
+        jobObservations: [],
+        offerObservations: [
+          {
+            path: "/pricing",
+            value: {
+              currency: "CHF",
+              lineItems: [{ code: "linehaul", amountMinor: 146000 }],
+            },
+            evidenceQuote: "My all-in price is CHF 1,460.",
+          },
+        ],
+        signals: { offerIsFinal: true },
+      },
+    );
+
+    expect(offer).toMatchObject({
+      valid: true,
+      comparabilityStatus: "comparable",
+      missingRequiredPaths: [],
+      data: {
+        pricing: {
+          currency: "CHF",
+          lineItems: [{ code: "linehaul", amountMinor: 146000 }],
+        },
+        normalized: { totalMinor: 146000 },
+      },
+    });
+  });
+
   it("creates a complete job revision while preserving explicit false and empty values", async () => {
     const config = await freight();
     const result = reduceJobDocument(

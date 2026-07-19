@@ -1,7 +1,9 @@
 # ADR 0001: use an HTTP Custom LLM for the MVP
 
-Status: accepted  
+Status: superseded by [`0002-native-elevenlabs-milestone-tools.md`](0002-native-elevenlabs-milestone-tools.md)
 Date: 2026-07-19
+
+This record remains as the rationale and rollback design for the first implementation. The MVP switched after deployed evidence showed that the response-critical Custom LLM path coupled speech to exhaustive extraction and persistence, while a native ElevenLabs webhook-tool path had already proved the required turn-bound cross-conversation state exchange.
 
 ## Context
 

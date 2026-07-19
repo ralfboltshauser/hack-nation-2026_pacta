@@ -1,0 +1,283 @@
+{
+  "contractVersion": "1",
+  "key": "freight_brokerage",
+  "version": "0.2.0",
+  "terminology": {
+    "customer": { "singular": "shipper", "plural": "shippers" },
+    "supplier": { "singular": "carrier", "plural": "carriers" },
+    "job": { "singular": "load", "plural": "loads" },
+    "offer": { "singular": "quote", "plural": "quotes" },
+    "session": { "singular": "sourcing session", "plural": "sourcing sessions" }
+  },
+  "capabilities": { "voice": true, "chat": true, "files": true },
+  "job": {
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "origin": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pickup place exactly as stated by the customer."
+        },
+        "destination": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Delivery place exactly as stated by the customer."
+        },
+        "pickupTime": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pickup time exactly as stated by the customer; relative wording is allowed."
+        }
+      },
+      "required": ["origin", "destination", "pickupTime"]
+    },
+    "completion": {
+      "mustBeKnown": [],
+      "allowExplicitUnknown": [],
+      "confirmation": {
+        "required": true,
+        "readbackPaths": ["/origin", "/destination", "/pickupTime"],
+        "prompt": "Read back the route and pickup time in one sentence, then ask for an explicit yes."
+      }
+    },
+    "fields": [
+      {
+        "path": "/origin",
+        "label": "Origin",
+        "priority": 100,
+        "questions": {
+          "voice": ["Where is the load leaving from?"],
+          "chat": ["Where is the pickup?"]
+        },
+        "documentHints": ["origin", "pickup"],
+        "confirmationLabel": "Origin",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/destination",
+        "label": "Destination",
+        "priority": 99,
+        "questions": {
+          "voice": ["Where is the load going?"],
+          "chat": ["Where is the delivery?"]
+        },
+        "documentHints": ["destination", "delivery"],
+        "confirmationLabel": "Destination",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/pickupTime",
+        "label": "Pickup time",
+        "priority": 98,
+        "questions": {
+          "voice": ["When should it be picked up?"],
+          "chat": ["When should it be picked up?"]
+        },
+        "documentHints": ["pickup", "pickup time", "ready time"],
+        "confirmationLabel": "Pickup",
+        "sensitivity": "normal"
+      }
+    ]
+  },
+  "intake": {
+    "channels": {
+      "voice": { "enabled": true, "askOneQuestionAtATime": true },
+      "chat": {
+        "enabled": true,
+        "fileInput": {
+          "enabled": true,
+          "acceptedTypes": ["application/pdf", "image/png", "image/jpeg"],
+          "maxFiles": 3
+        }
+      }
+    },
+    "questionSelection": {
+      "strategy": "highest_priority_missing_field",
+      "avoidRepeatingAnsweredFields": true
+    },
+    "sourceConflict": { "strategy": "ask_customer", "showBothValues": true }
+  },
+  "suppliers": {
+    "defaultCount": 1,
+    "defaultParallelism": 1,
+    "maxCount": 3,
+    "discovery": {
+      "adapterKey": "static.v1",
+      "queryInputs": ["/origin", "/destination"],
+      "eligibilityRuleIds": []
+    }
+  },
+  "offer": {
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pricing": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "currency": {
+              "type": "string",
+              "const": "CHF",
+              "description": "Configured demo currency. Always CHF; do not ask the supplier for a currency."
+            },
+            "lineItems": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "description": "The one all-in freight price. Convert major currency units to minor units: 500 EUR is 50000, not 500.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "const": "linehaul",
+                    "description": "Always linehaul for the single all-in demo price."
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "All-in price in minor units. Multiply the stated major-unit amount by 100: 500 EUR becomes 50000."
+                  }
+                },
+                "required": ["code", "amountMinor"]
+              }
+            }
+          },
+          "required": ["currency", "lineItems"]
+        },
+        "normalized": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "totalMinor": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["totalMinor"]
+        }
+      },
+      "required": ["pricing", "normalized"]
+    },
+    "fields": [
+      {
+        "path": "/pricing/lineItems",
+        "label": "All-in CHF price",
+        "priority": 100,
+        "questions": {
+          "voice": ["What is your all-in price in Swiss francs?"],
+          "chat": ["What is your all-in CHF price?"]
+        }
+      }
+    ],
+    "lineItems": {
+      "enabled": true,
+      "path": "/pricing/lineItems",
+      "catalog": [
+        {
+          "key": "linehaul",
+          "label": "All-in freight price",
+          "aliases": ["all-in", "total", "quote"]
+        }
+      ],
+      "unknownItemPolicy": "reject"
+    },
+    "normalizers": [
+      {
+        "functionKey": "money.sum_line_items.v1",
+        "inputs": ["/pricing/lineItems"],
+        "output": "/normalized/totalMinor"
+      }
+    ],
+    "completion": {
+      "mustBeKnown": ["/pricing/currency", "/pricing/lineItems"],
+      "terminalStatuses": ["comparable", "declined", "callback", "unreachable"]
+    },
+    "clarificationRules": [],
+    "comparability": {
+      "requiredPaths": ["/normalized/totalMinor", "/pricing/currency"],
+      "ruleIds": [],
+      "sameCurrencyRequired": true
+    }
+  },
+  "negotiation": {
+    "phases": [
+      "presenting_job",
+      "quoting",
+      "bargaining",
+      "waiting",
+      "closing",
+      "closed"
+    ],
+    "initialPhase": "presenting_job",
+    "transitions": [],
+    "outcomes": [
+      "selected_confirmed",
+      "not_selected_notified",
+      "supplier_declined",
+      "callback_committed",
+      "unreachable",
+      "failed"
+    ],
+    "levers": [
+      {
+        "id": "verified_all_in_price",
+        "factKey": "verified_all_in_price",
+        "allowedPhases": ["bargaining", "waiting"],
+        "discloseSupplierIdentity": false,
+        "prompt": "I have a verified comparable all-in offer at {{amount}}. Can you improve your price?"
+      }
+    ],
+    "limits": { "maxConcessionRequests": 1, "maxDurationSeconds": 300 }
+  },
+  "recommendation": {
+    "eligibilityRules": [],
+    "warningRules": [],
+    "metrics": [
+      {
+        "id": "all_in_total",
+        "source": "offer",
+        "path": "/normalized/totalMinor",
+        "type": "number"
+      }
+    ],
+    "policies": [
+      {
+        "id": "default",
+        "ranking": [{ "metric": "all_in_total", "direction": "asc" }]
+      }
+    ],
+    "customerMaySelectNonRecommended": true,
+    "requireExplicitCustomerSelection": true
+  },
+  "customerUpdates": {
+    "materialEventTypes": [
+      "conversation.connected",
+      "offer.revision_created",
+      "offer.became_comparable",
+      "negotiation.outcome_recorded"
+    ],
+    "maxSilenceSeconds": 15,
+    "noChangeAction": "skip_turn",
+    "dedupeByEventSequence": true
+  },
+  "completion": {
+    "reviewReadiness": {
+      "mode": "all_ready_or_deadline",
+      "minimumComparableOffers": 1,
+      "deadlineSeconds": 120,
+      "onDeadline": "review_available_offers"
+    },
+    "keepSupplierCallsOpenUntilCustomerDecision": true,
+    "winnerRequiresExplicitConfirmation": true,
+    "notifyNonSelectedBeforeEnd": true
+  },
+  "presentation": {
+    "accent": "blue",
+    "comparisonColumns": ["normalized_total"]
+  },
+  "extensions": { "demoProfile": "short_voice_v1" }
+}

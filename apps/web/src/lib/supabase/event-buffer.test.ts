@@ -13,6 +13,8 @@ function event(eventSeq: number): RealtimeSessionEvent {
     id: `event-${eventSeq}`,
     eventSeq,
     eventType: `test.${eventSeq}`,
+    aggregateType: null,
+    aggregateId: null,
     payload: {},
   };
 }
@@ -24,12 +26,16 @@ describe("realtime event buffer", () => {
         id: "a",
         event_seq: "2",
         event_type: "job.updated",
+        aggregate_type: "job",
+        aggregate_id: "job-a",
         payload: { ok: true },
       }),
     ).toEqual({
       id: "a",
       eventSeq: 2,
       eventType: "job.updated",
+      aggregateType: "job",
+      aggregateId: "job-a",
       payload: { ok: true },
     });
     expect(

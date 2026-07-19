@@ -12,7 +12,8 @@ export type StartOutboundCallInput = {
   agentId: string;
   agentPhoneNumberId: string;
   toNumber: string;
-  context: Omit<PactaExtraBody, "contract_version" | "brain_token">;
+  runtime?: "custom_llm" | "native_tools";
+  context?: Omit<PactaExtraBody, "contract_version" | "brain_token">;
   brainToken?: string;
   dynamicVariables?: Record<string, string | number | boolean>;
   callRecordingEnabled?: boolean;
@@ -20,6 +21,32 @@ export type StartOutboundCallInput = {
 
 export function createBrainToken() {
   return randomBytes(32).toString("base64url");
+}
+
+export function buildOutboundConversationInitiationClientData(input: {
+  runtime: "custom_llm" | "native_tools";
+  context?: Omit<PactaExtraBody, "contract_version" | "brain_token">;
+  brainToken?: string;
+  dynamicVariables?: Record<string, string | number | boolean>;
+}) {
+  if (input.runtime === "custom_llm" && (!input.context || !input.brainToken))
+    throw new Error(
+      "Custom LLM outbound calls require context and a brain token.",
+    );
+  return {
+    ...(input.runtime === "custom_llm"
+      ? {
+          customLlmExtraBody: {
+            contract_version: "1" as const,
+            brain_token: input.brainToken!,
+            ...input.context!,
+          },
+        }
+      : {}),
+    ...(input.dynamicVariables
+      ? { dynamicVariables: input.dynamicVariables }
+      : {}),
+  };
 }
 
 export async function getSignedConversationUrl(input: {
@@ -49,23 +76,26 @@ export async function getSignedConversationUrl(input: {
 }
 
 export async function startOutboundCall(input: StartOutboundCallInput) {
-  const brainToken = input.brainToken ?? createBrainToken();
+  const runtime = input.runtime ?? "custom_llm";
+  const brainToken =
+    runtime === "custom_llm"
+      ? (input.brainToken ?? createBrainToken())
+      : undefined;
   const client = new ElevenLabsClient({ apiKey: input.apiKey });
   const response = await client.conversationalAi.twilio.outboundCall({
     agentId: input.agentId,
     agentPhoneNumberId: input.agentPhoneNumberId,
     toNumber: e164.parse(input.toNumber),
     callRecordingEnabled: input.callRecordingEnabled ?? false,
-    conversationInitiationClientData: {
-      customLlmExtraBody: {
-        contract_version: "1",
-        brain_token: brainToken,
-        ...input.context,
-      },
-      ...(input.dynamicVariables
-        ? { dynamicVariables: input.dynamicVariables }
-        : {}),
-    },
+    conversationInitiationClientData:
+      buildOutboundConversationInitiationClientData({
+        runtime,
+        ...(input.context ? { context: input.context } : {}),
+        ...(brainToken ? { brainToken } : {}),
+        ...(input.dynamicVariables
+          ? { dynamicVariables: input.dynamicVariables }
+          : {}),
+      }),
   });
 
   if (!response.success || !response.conversationId) {
@@ -74,7 +104,7 @@ export async function startOutboundCall(input: StartOutboundCallInput) {
     );
   }
   return {
-    brainToken,
+    brainToken: brainToken ?? null,
     conversationId: response.conversationId,
     callSid: response.callSid ?? null,
     message: response.message,

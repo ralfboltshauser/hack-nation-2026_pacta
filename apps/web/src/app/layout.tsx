@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import "./globals.css";
+import "./live-session-console.css";
+import "./session-console.css";
 
 export const metadata: Metadata = {
   title: "Pacta — AI negotiation orchestrator",

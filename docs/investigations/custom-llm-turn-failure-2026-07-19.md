@@ -1,6 +1,6 @@
 # Custom LLM turn failure investigation — 2026-07-19
 
-Status: original first-turn failure fixed; parallel-supplier commit fix awaiting production E2E
+Status: transport, late-commit, lock, and latency defects fixed; Custom LLM MVP architecture superseded after semantic-completeness failure
 Scope: safe text-only customer and three-supplier turns; outbound phone calls remained disabled
 
 ## Executive finding
@@ -16,15 +16,57 @@ The observed failure is a chain of faults, not one network outage:
 7. Pacta's second attempt nevertheless finished and committed a confirmed job about 6.5 seconds after the conversation had ended. This late commit is a Pacta correctness bug.
 8. The Supabase Realtime warning seen during the commit was not on the response-critical path. No Realtime subscriber was connected in this test, so Supabase documents that this missing-partition warning represents a broadcast that could not have reached anyone anyway.
 
-The immediate visible failure is therefore at the **ElevenLabs turn-orchestration deadline**, but its first trigger was **schema-invalid model output**, amplified by **pre-model database latency** and an **atomic structured-generation path**.
+The immediate visible failure was therefore at the **ElevenLabs turn-orchestration deadline**, but its first trigger was **schema-invalid model output**, amplified by **pre-model database latency** and an **atomic structured-generation path**. Those defects were subsequently fixed. A later fast production trace exposed the deeper architectural issue described below.
 
-## Resolution checkpoint
+## Final follow-on finding: a valid reducer response can still omit configured facts
+
+The production deployment with bulk writes and `dub1` placement removed the lock staircase:
+
+- customer visible turn: 4.910 seconds;
+- supplier visible turns: 2.205, 3.508, and 3.608 seconds;
+- production supplier execution totals: 1.612, 2.791, and 2.851 seconds;
+- session-lock acquisition: 7, 8, and 85 milliseconds;
+- completion transactions: 153, 165, and 197 milliseconds.
+
+All three supplier outputs were valid against Pacta's reducer wire schema and used one attempt. However, Alpine emitted only four observations and Rhine omitted `/pricing/allInTotalMinor`; only Northstar emitted all sixteen required observations. The database faithfully persisted exactly what the model returned, leaving two offers incomplete. The safe harness then correctly timed out waiting for three comparable offers.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant EL as "3 ElevenLabs conversations"
+    participant API as "Custom LLM route"
+    participant M as "Structured reducer model"
+    participant Z as "Reducer wire-schema validator"
+    participant CFG as "Pinned offer-schema validator"
+    participant PG as "Postgres"
+
+    par Three fast turns
+        EL->>API: "Complete spoken quote"
+        API->>M: "Prompt contains offer JSON Schema"
+        M-->>API: "Observation array"
+    end
+    API->>Z: "Validate envelope"
+    Note over Z: "An empty or partial observation array is structurally legal"
+    Z-->>API: "Valid"
+    API->>CFG: "Apply observations and validate resulting offer"
+    CFG-->>API: "Incomplete; required paths still missing"
+    API->>PG: "Persist partial immutable revision"
+    API-->>EL: "Ask clarification despite a complete human quote"
+```
+
+The AI SDK did not fail here. `Output.object` validated the schema Pacta supplied. The mistake was treating the configured job/offer schema embedded in the prompt as if it were also a provider-enforced response schema. Descriptions such as “exhaustive” are model guidance, not a structural guarantee.
+
+This invalidated the earlier conclusion drawn from a small isolated benchmark. Six successful supplier generations did not prove the live architecture because the test sample was too small and the wire schema itself allowed omission.
+
+ADR [`../decisions/0002-native-elevenlabs-milestone-tools.md`](../decisions/0002-native-elevenlabs-milestone-tools.md) therefore moves the MVP to native ElevenLabs conversations with complete typed milestone tools. The endpoint validates the complete submitted document against the pinned config and returns exact missing paths. The old Custom LLM route remains deployed only as a temporary rollback path.
+
+## First resolution checkpoint
 
 The first causal failure has been removed and verified in production:
 
 - Pacta still uses AI SDK `generateText` with `Output.object`; validation was functioning correctly and was not replaced with manual JSON parsing.
 - The reducer wire schema now uses descriptive fields and schema descriptions.
-- `openai/gpt-oss-120b` was removed from the realtime path. It produced zero valid objects in eight exact-prompt trials. `google/gemini-2.5-flash-lite` is the stable choice: it produced valid, semantically complete customer output in 5/5 trials and supplier output in 6/6 trials.
+- `openai/gpt-oss-120b` was removed from the realtime path. It produced zero valid objects in eight exact-prompt trials. `google/gemini-2.5-flash-lite` produced valid, semantically complete customer output in 5/5 isolated trials and supplier output in 6/6 isolated trials. A later live trace disproved the inference that this sample guaranteed completeness.
 - Production session `4bc74783-e82b-45f5-ba98-77fdf149b721` completed both customer turns on the first attempt. The visible turns took 13.324 and 11.917 seconds; the persisted executions took about 10.49 and 10.40 seconds.
 - A terminal-conversation commit gate now prevents a reducer that finishes after ElevenLabs has ended the conversation from mutating authoritative state. Its regression test passes against hosted Postgres.
 
@@ -224,21 +266,21 @@ Confidence: verified as the cause of the parallel-supplier staircase.
 
 ### H3 — the chosen model is inappropriate for a realtime structured reducer
 
-Confidence: resolved for the exact demo fixtures.
+Confidence: the original model was inappropriate, but changing models did not resolve the architectural completeness risk.
 
 - `gpt-oss-120b` was 0/8 structurally valid across the original and hardened schemas.
 - GPT-4.1 Nano was structurally valid but semantically incomplete for all 6/6 supplier trials.
 - GPT-4.1 Mini was both unreliable and too slow in a preliminary four-run sample.
-- Gemini 2.5 Flash Lite was 6/6 complete for suppliers; its three-way fan-out wall time was 4.12 seconds. Gemini 3.1 Flash Lite Preview was also 6/6 and faster, but is not selected solely from this small sample because it is a preview model.
+- Gemini 2.5 Flash Lite was 6/6 complete for suppliers in the isolated benchmark and its three-way fan-out wall time was 4.12 seconds. The later production safe trace emitted two incomplete but wire-schema-valid reductions. The benchmark was useful model evidence, not an end-to-end guarantee.
 
 ### H4 — atomic structured generation delays useful speech unnecessarily
 
-Confidence: high as an architectural property.
+Confidence: verified as the wrong MVP boundary.
 
 - Current `generateText + Output.object` exposes no real response content until the complete object is generated and validated.
 - AI SDK explicitly recommends `streamText` plus `partialOutputStream` when structured response latency is unacceptable.
-- Spike a schema whose first field is the spoken response, stream only complete safe speech deltas, and commit only the final validated object.
-- Reject this design if partial objects cannot safely separate speech from unvalidated state, or if full validation still exceeds the absolute ElevenLabs budget.
+- Partial streaming could reduce latency but would not make a partial observation array semantically exhaustive.
+- ADR 0002 removes the second response-critical reducer call and persists complete typed milestone documents instead.
 
 ### H5 — heartbeat/buffer text extends the provider deadline
 
@@ -262,9 +304,10 @@ Confidence: falsified for this run.
 2. ~~Add correlation-safe phase timings.~~ Implemented without transcript, credential, or prompt logging.
 3. ~~Restore a descriptive reducer schema and select a reliable fast model.~~ Gemini 2.5 Flash Lite selected and production customer path verified.
 4. ~~Verify authenticated Realtime Broadcast and durable replay.~~ Verified; bounded cold-subscription retry added.
-5. Deploy the bulk evidence writes and `dub1` placement, then repeat the exact safe three-supplier E2E.
-6. If the measured post-lock path still lacks comfortable margin, shorten the shared lock scope only after a global lock-order audit.
-7. Only if generation itself later misses the budget, test partial structured streaming.
+5. ~~Deploy the bulk evidence writes and `dub1` placement, then repeat the exact safe three-supplier E2E.~~ Verified: the lock staircase and cross-region latency are removed.
+6. ~~Treat a small isolated semantic benchmark as sufficient proof.~~ Rejected after two wire-schema-valid live outputs omitted required offer facts.
+7. Implement ADR 0002 additively: native ElevenLabs staging agents plus complete typed milestone tools, while keeping the current route as rollback.
+8. Require repeated native tool evals and the safe customer-plus-three-supplier E2E before switching production agent IDs.
 
 ## Primary references
 

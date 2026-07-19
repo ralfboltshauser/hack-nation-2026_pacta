@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { hasDemoAccess } from "@/server/access";
 import { runSessionAction } from "@/server/orchestration/calls";
 
 const requestSchema = z.object({ target: z.literal("suppliers") }).strict();
@@ -12,11 +11,6 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ sessionId: string }> },
 ) {
-  if (!hasDemoAccess(request))
-    return Response.json(
-      { error: "Demo access key required" },
-      { status: 401 },
-    );
   const parsed = requestSchema.safeParse(
     await request.json().catch(() => null),
   );

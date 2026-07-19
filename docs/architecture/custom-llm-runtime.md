@@ -1,5 +1,7 @@
 # Custom LLM live-call runtime research
 
+> **Superseded for the MVP.** ADR [`../decisions/0002-native-elevenlabs-milestone-tools.md`](../decisions/0002-native-elevenlabs-milestone-tools.md) selects native ElevenLabs agents with typed milestone webhook tools. This document remains the researched rollback design.
+
 > Historical design note: this research compared the original long-lived customer-PSTN option. The implemented MVP now uses ElevenLabs text chat for the customer and PSTN only for suppliers. Where this document discusses a customer silence timeout or reserved voice slot, [`../call-flow.md`](../call-flow.md) and ADR 0001 contain the superseding contract.
 
 Status: researched architecture proposal; protocol behavior still requires a live spike

@@ -1,4 +1,4 @@
-import { TextConversation } from "@elevenlabs/client";
+import { TextConversation, type Callbacks } from "@elevenlabs/client";
 import { createClient } from "@supabase/supabase-js";
 
 type SessionView = {
@@ -20,9 +20,20 @@ type SessionView = {
 
 type SignedTextSession = {
   signedUrl: string;
-  customLlmExtraBody: Record<string, unknown>;
+  customLlmExtraBody?: Record<string, unknown>;
   dynamicVariables?: Record<string, string | number | boolean>;
 };
+
+type AgentToolRequest = Parameters<
+  NonNullable<Callbacks["onAgentToolRequest"]>
+>[0];
+type AgentToolResponse = Parameters<
+  NonNullable<Callbacks["onAgentToolResponse"]>
+>[0];
+
+function toolResponseBlocked(response: AgentToolResponse) {
+  return "is_blocked" in response && response.is_blocked === true;
+}
 
 type StartedSession = {
   sessionId: string;
@@ -75,14 +86,24 @@ async function waitFor<T>(
 class TextHarness {
   private readonly agentMessages: string[];
   private readonly roundTripMs: number[] = [];
+  private readonly toolRequests: AgentToolRequest[];
+  private readonly toolResponses: AgentToolResponse[];
+  private readonly errors: string[];
   private disconnected = false;
 
   private constructor(
     private readonly conversation: TextConversation,
     private readonly label: string,
+    private readonly runtime: "custom_llm" | "native_tools",
     agentMessages: string[],
+    toolRequests: AgentToolRequest[],
+    toolResponses: AgentToolResponse[],
+    errors: string[],
   ) {
     this.agentMessages = agentMessages;
+    this.toolRequests = toolRequests;
+    this.toolResponses = toolResponses;
+    this.errors = errors;
   }
 
   static async connect(input: {
@@ -91,30 +112,67 @@ class TextHarness {
     bind: (providerConversationId: string) => Promise<void>;
   }) {
     const agentMessages: string[] = [];
-    let harness: TextHarness | undefined;
-    let disconnectBeforeReady = false;
+    const toolRequests: AgentToolRequest[] = [];
+    const toolResponses: AgentToolResponse[] = [];
+    const errors: string[] = [];
+    const lifecycle: {
+      harness: TextHarness | undefined;
+      disconnectBeforeReady: boolean;
+    } = { harness: undefined, disconnectBeforeReady: false };
+    const runtime =
+      input.session.customLlmExtraBody &&
+      Object.keys(input.session.customLlmExtraBody).length > 0
+        ? "custom_llm"
+        : "native_tools";
     const conversation = await TextConversation.startSession({
       signedUrl: input.session.signedUrl,
       connectionType: "websocket",
       textOnly: true,
       overrides: { conversation: { textOnly: true } },
-      customLlmExtraBody: input.session.customLlmExtraBody,
-      dynamicVariables: input.session.dynamicVariables,
+      ...(input.session.customLlmExtraBody
+        ? { customLlmExtraBody: input.session.customLlmExtraBody }
+        : {}),
+      ...(input.session.dynamicVariables
+        ? { dynamicVariables: input.session.dynamicVariables }
+        : {}),
       onMessage: ({ role, message }) => {
         if (role === "agent") agentMessages.push(message);
       },
+      onAgentToolRequest: (request) => {
+        toolRequests.push(request);
+        console.log(
+          `[${input.label}] tool request ${request.tool_name} (${request.tool_call_id})`,
+        );
+      },
+      onAgentToolResponse: (response) => {
+        toolResponses.push(response);
+        console.log(
+          `[${input.label}] tool response ${response.tool_name} (${response.tool_call_id}) called=${response.is_called} error=${response.is_error}`,
+        );
+      },
       onDisconnect: () => {
-        if (harness) harness.disconnected = true;
-        else disconnectBeforeReady = true;
+        if (lifecycle.harness) lifecycle.harness.disconnected = true;
+        else lifecycle.disconnectBeforeReady = true;
       },
       onError: (message) => {
+        errors.push(message);
         console.error(`[${input.label}] ElevenLabs error: ${message}`);
       },
     });
-    harness = new TextHarness(conversation, input.label, agentMessages);
-    harness.disconnected = disconnectBeforeReady;
+    const harness = new TextHarness(
+      conversation,
+      input.label,
+      runtime,
+      agentMessages,
+      toolRequests,
+      toolResponses,
+      errors,
+    );
+    lifecycle.harness = harness;
+    harness.disconnected = lifecycle.disconnectBeforeReady;
     await input.bind(conversation.getId());
     await harness.waitForNextAgentMessage(0, 30_000).catch(() => null);
+    harness.assertNoToolErrors();
     return harness;
   }
 
@@ -125,6 +183,7 @@ class TextHarness {
     const startedAt = performance.now();
     this.conversation.sendUserMessage(message);
     const response = await this.waitForNextAgentMessage(before, timeoutMs);
+    this.assertNoToolErrors();
     const elapsed = Math.round(performance.now() - startedAt);
     this.roundTripMs.push(elapsed);
     console.log(
@@ -135,6 +194,81 @@ class TextHarness {
 
   timingSummary() {
     return { label: this.label, roundTripMs: this.roundTripMs };
+  }
+
+  usesNativeTools() {
+    return this.runtime === "native_tools";
+  }
+
+  assertNoToolErrors() {
+    const failed = this.toolResponses.filter(
+      (response) => response.is_error || toolResponseBlocked(response),
+    );
+    if (this.errors.length || failed.length)
+      throw new Error(
+        `${this.label} reported ElevenLabs/tool errors: ${JSON.stringify({
+          errors: this.errors,
+          failedTools: failed.map((response) => ({
+            name: response.tool_name,
+            toolCallId: response.tool_call_id,
+            isError: response.is_error,
+            isBlocked: toolResponseBlocked(response),
+            isCalled: response.is_called,
+          })),
+        })}`,
+      );
+  }
+
+  assertToolCalls(
+    expected: Record<string, { minimum: number; maximum: number }>,
+  ) {
+    this.assertNoToolErrors();
+    const counts = new Map<string, number>();
+    for (const request of this.toolRequests)
+      counts.set(request.tool_name, (counts.get(request.tool_name) ?? 0) + 1);
+
+    for (const [toolName, range] of Object.entries(expected)) {
+      const count = counts.get(toolName) ?? 0;
+      if (count < range.minimum || count > range.maximum)
+        throw new Error(
+          `${this.label} expected ${toolName} ${range.minimum}-${range.maximum} times; observed ${count}. Full trace: ${JSON.stringify(this.toolSummary())}`,
+        );
+      const requests = this.toolRequests.filter(
+        (request) => request.tool_name === toolName,
+      );
+      for (const request of requests) {
+        const succeeded = this.toolResponses.some(
+          (response) =>
+            response.tool_call_id === request.tool_call_id &&
+            response.is_called &&
+            !response.is_error &&
+            !toolResponseBlocked(response),
+        );
+        if (!succeeded)
+          throw new Error(
+            `${this.label} received no successful response for ${toolName} (${request.tool_call_id}). Full trace: ${JSON.stringify(this.toolSummary())}`,
+          );
+      }
+    }
+  }
+
+  toolSummary() {
+    return {
+      label: this.label,
+      runtime: this.runtime,
+      requests: this.toolRequests.map((request) => ({
+        name: request.tool_name,
+        toolCallId: request.tool_call_id,
+      })),
+      responses: this.toolResponses.map((response) => ({
+        name: response.tool_name,
+        toolCallId: response.tool_call_id,
+        isCalled: response.is_called,
+        isError: response.is_error,
+        isBlocked: toolResponseBlocked(response),
+      })),
+      errors: this.errors,
+    };
   }
 
   async close() {
@@ -156,20 +290,66 @@ class TextHarness {
 
 const activeHarnesses: TextHarness[] = [];
 
-const customerJob = `Origin city Zurich, origin country CH. Destination city Munich, destination country DE. Pickup window starts 2026-07-20T08:00:00+02:00 and ends 2026-07-20T10:00:00+02:00. Delivery window starts 2026-07-20T16:00:00+02:00 and ends 2026-07-20T18:00:00+02:00. Equipment is dry_van_53. Commodity is machine parts, weight is 10000 kg, and there are 10 handling units. Hazmat is false. Special services is an empty list. Risk criticality is standard and minimum coverage is 20000000 minor currency units. I explicitly confirm all of these exact job details.`;
+const customerJob =
+  "Origin is Zurich. Destination is Munich. Pickup time is 2026-07-21T08:00:00+02:00. I explicitly confirm these exact job details.";
 
 const supplierQuotes = [
-  { name: "Alpine Haulage", total: 152_000, linehaul: 142_000 },
-  { name: "Rhine Cargo", total: 146_000, linehaul: 136_000 },
-  { name: "Northstar Transit", total: 149_000, linehaul: 139_000 },
+  { name: "Alpine Haulage", spokenPrice: "1,520" },
+  { name: "Rhine Cargo", spokenPrice: "1,460" },
+  { name: "Northstar Transit", spokenPrice: "1,490" },
 ].map((quote) => ({
   ...quote,
-  message: `This is my final firm quote. Pricing currency is CHF. Line items are linehaul ${quote.linehaul} minor units, flat basis, plus fuel 10000 minor units, flat basis. The all-in total is ${quote.total} minor units and normalized total is ${quote.total} minor units. Pickup commitment is 2026-07-20T08:00:00+02:00, delivery commitment is 2026-07-20T18:00:00+02:00, and equipment is dry_van_53. Quote type is firm, valid until 2026-07-19T20:00:00+02:00, payment terms are net 30, and tolls are included. Cargo coverage is confirmed with a limit of 25000000 minor units. Conditions, exclusions, and unknowns are all empty lists.`,
+  message: `My all-in price is ${quote.spokenPrice} Swiss francs.`,
 }));
+
+function assertRuntimeToolGate(input: {
+  customer: TextHarness;
+  suppliers: Array<{ displayName: string; harness: TextHarness }>;
+  selected: { displayName: string; harness: TextHarness };
+}) {
+  const harnesses = [
+    input.customer,
+    ...input.suppliers.map((supplier) => supplier.harness),
+  ];
+  harnesses.forEach((harness) => harness.assertNoToolErrors());
+  const nativeCount = harnesses.filter((harness) =>
+    harness.usesNativeTools(),
+  ).length;
+  if (nativeCount === 0) {
+    console.log(
+      "Custom LLM runtime detected; native milestone callback assertions are not applicable.",
+    );
+    return "custom_llm" as const;
+  }
+  if (nativeCount !== harnesses.length)
+    throw new Error(
+      `Mixed ElevenLabs runtimes detected across the safe E2E harnesses: ${JSON.stringify(harnesses.map((harness) => harness.toolSummary()))}`,
+    );
+
+  input.customer.assertToolCalls({
+    submit_confirmed_job: { minimum: 1, maximum: 1 },
+    get_customer_state: { minimum: 1, maximum: Number.MAX_SAFE_INTEGER },
+    select_offer: { minimum: 1, maximum: 1 },
+  });
+  for (const supplier of input.suppliers) {
+    supplier.harness.assertToolCalls({
+      get_negotiation_state: {
+        minimum: 1,
+        maximum: Number.MAX_SAFE_INTEGER,
+      },
+      submit_offer: { minimum: 1, maximum: 1 },
+      commit_selected_offer:
+        supplier === input.selected
+          ? { minimum: 1, maximum: 1 }
+          : { minimum: 0, maximum: 0 },
+    });
+  }
+  console.log("Native ElevenLabs milestone tool gate passed.");
+  return "native_tools" as const;
+}
 
 async function main() {
   const origin = baseUrl();
-  const demoKey = required("PACTA_DEMO_ACCESS_KEY");
   const supabaseUrl = required("NEXT_PUBLIC_SUPABASE_URL");
   const supabaseKey = required("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
 
@@ -186,14 +366,16 @@ async function main() {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-pacta-demo-key": demoKey,
     },
     body: JSON.stringify({
       useCase: "freight_brokerage",
-      customer: { displayName: "Safe E2E Customer" },
+      customer: {
+        displayName: "Safe E2E Customer",
+        phoneE164: "+14155550100",
+      },
       suppliers: supplierQuotes.map((quote, index) => ({
         displayName: quote.name,
-        phoneE164: `+1415555010${index}`,
+        phoneE164: `+1415555020${index}`,
       })),
     }),
   });
@@ -212,7 +394,6 @@ async function main() {
   const authHeaders = {
     authorization: `Bearer ${signedIn.data.session.access_token}`,
     "content-type": "application/json",
-    "x-pacta-demo-key": demoKey,
   };
   await jsonRequest(`${origin}/api/sessions/${started.sessionId}/join`, {
     method: "POST",
@@ -302,7 +483,7 @@ async function main() {
     "Present the current offers and your configured recommendation. I have not selected one yet.",
   );
   await customer.send(
-    "I explicitly select Rhine Cargo's CHF 1,460 offer on its exact stored terms.",
+    "I explicitly select Rhine Cargo's 1,460 Swiss franc offer on its exact stored terms.",
   );
   view = await waitFor(
     "customer selection",
@@ -358,6 +539,7 @@ async function main() {
     throw new Error(
       `Completed session has no confirmed award: ${JSON.stringify(view)}`,
     );
+  const runtime = assertRuntimeToolGate({ customer, suppliers, selected });
   console.log(
     JSON.stringify(
       {
@@ -369,7 +551,9 @@ async function main() {
         suppliers: view.suppliers.length,
         awardStatus: view.awardStatus,
         sessionStatus: view.status,
+        runtime,
         timings: activeHarnesses.map((harness) => harness.timingSummary()),
+        tools: activeHarnesses.map((harness) => harness.toolSummary()),
       },
       null,
       2,

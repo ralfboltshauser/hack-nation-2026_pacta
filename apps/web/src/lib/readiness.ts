@@ -10,7 +10,6 @@ const productionRequired = [
   "ELEVENLABS_CUSTOMER_AGENT_ID",
   "ELEVENLABS_SUPPLIER_AGENT_ID",
   "ELEVENLABS_WEBHOOK_SECRET",
-  "PACTA_DEMO_ACCESS_KEY",
 ] as const;
 
 export async function getReadiness() {
@@ -20,6 +19,14 @@ export async function getReadiness() {
       : (["DATABASE_URL"] as const);
   const missing: string[] = required.filter((name) => !process.env[name]);
   const outboundCalls = process.env.PACTA_OUTBOUND_CALLS_ENABLED === "true";
+  if (process.env.PACTA_ELEVENLABS_RUNTIME === "native_tools") {
+    for (const name of [
+      "ELEVENLABS_NATIVE_CUSTOMER_AGENT_ID",
+      "ELEVENLABS_NATIVE_SUPPLIER_AGENT_ID",
+    ] as const) {
+      if (!process.env[name]) missing.push(name);
+    }
+  }
   if (outboundCalls && !process.env.ELEVENLABS_PHONE_NUMBER_ID)
     missing.push("ELEVENLABS_PHONE_NUMBER_ID");
   let database = "missing";

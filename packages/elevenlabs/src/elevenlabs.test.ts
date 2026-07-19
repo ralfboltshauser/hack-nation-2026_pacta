@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import {
+  buildOutboundConversationInitiationClientData,
   chatCompletionRequestSchema,
   createChatCompletionSse,
   createChatCompletionToolCallSse,
@@ -29,6 +30,23 @@ const request = {
 };
 
 describe("ElevenLabs protocol", () => {
+  it("omits every Custom LLM authority field from native outbound calls", () => {
+    expect(
+      buildOutboundConversationInitiationClientData({
+        runtime: "native_tools",
+        context: {
+          workspace_id: request.elevenlabs_extra_body.workspace_id,
+          session_id: request.elevenlabs_extra_body.session_id,
+          conversation_id: request.elevenlabs_extra_body.conversation_id,
+          purpose: "supplier_negotiation",
+          negotiation_id: request.elevenlabs_extra_body.negotiation_id,
+        },
+        brainToken: "secret",
+        dynamicVariables: { party_name: "Customer" },
+      }),
+    ).toEqual({ dynamicVariables: { party_name: "Customer" } });
+  });
+
   it("parses Pacta context and fingerprints key-order independently", () => {
     const parsed = chatCompletionRequestSchema.parse(request);
     const reordered = chatCompletionRequestSchema.parse({

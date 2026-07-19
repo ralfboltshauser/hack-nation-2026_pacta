@@ -2,6 +2,8 @@ export type RealtimeSessionEvent = {
   id: string;
   eventSeq: number;
   eventType: string;
+  aggregateType: string | null;
+  aggregateId: string | null;
   payload: Record<string, unknown>;
 };
 
@@ -20,6 +22,14 @@ export function normalizeSessionEvent(
     id: String(raw.id ?? `${eventSeq}:${eventType}`),
     eventSeq,
     eventType,
+    aggregateType:
+      typeof (raw.aggregateType ?? raw.aggregate_type) === "string"
+        ? String(raw.aggregateType ?? raw.aggregate_type)
+        : null,
+    aggregateId:
+      typeof (raw.aggregateId ?? raw.aggregate_id) === "string"
+        ? String(raw.aggregateId ?? raw.aggregate_id)
+        : null,
     payload:
       raw.payload &&
       typeof raw.payload === "object" &&

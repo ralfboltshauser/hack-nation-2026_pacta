@@ -18,6 +18,7 @@
     "db:generate": "pnpm --filter @pacta/db generate",
     "db:migrate": "pnpm --filter @pacta/db migrate",
     "config:check": "pnpm --filter @pacta/use-case-config check",
+    "call:one-message": "node --env-file=.env --experimental-strip-types scripts/call-one-message.mts",
     "e2e:safe": "tsx scripts/safe-e2e.ts",
     "elevenlabs:provision": "tsx scripts/provision-elevenlabs.ts"
   },
