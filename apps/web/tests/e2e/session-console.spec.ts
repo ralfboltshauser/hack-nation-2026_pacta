@@ -3,6 +3,24 @@ import { expect, test } from "@playwright/test";
 const launchedSessionId = "00000000-0000-4000-8000-000000000001";
 const legacySessionId = "00000000-0000-4000-8000-000000000003";
 
+test("refuses public session creation while outbound calls are disarmed", async ({
+  request,
+}) => {
+  const response = await request.post("/api/sessions", {
+    data: {
+      useCase: "freight_brokerage",
+      customer: { phoneE164: "+12025550123" },
+      suppliers: [{ phoneE164: "+12025550124" }],
+    },
+  });
+
+  expect(response.status()).toBe(503);
+  await expect(response.json()).resolves.toEqual({
+    error:
+      "Outbound phone calls are temporarily unavailable. No session was created.",
+  });
+});
+
 test("presents the Pacta story and opens the negotiation room", async ({
   page,
 }) => {

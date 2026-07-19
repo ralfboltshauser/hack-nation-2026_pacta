@@ -26,6 +26,7 @@ export default defineConfig({
       : {
           NEXT_PUBLIC_SUPABASE_URL: "",
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
+          PACTA_OUTBOUND_CALLS_ENABLED: "",
         },
     timeout: 120_000,
   },

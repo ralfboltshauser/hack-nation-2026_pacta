@@ -356,6 +356,7 @@ function assertRuntimeToolGate(input: {
 
 async function main() {
   const origin = baseUrl();
+  const demoAccessKey = required("PACTA_DEMO_ACCESS_KEY");
   const supabaseUrl = required("NEXT_PUBLIC_SUPABASE_URL");
   const supabaseKey = required("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
 
@@ -372,6 +373,7 @@ async function main() {
     method: "POST",
     headers: {
       "content-type": "application/json",
+      "x-pacta-demo-key": demoAccessKey,
     },
     body: JSON.stringify({
       useCase: "freight_brokerage",
