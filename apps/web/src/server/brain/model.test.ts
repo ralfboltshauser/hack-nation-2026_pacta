@@ -65,6 +65,29 @@ describe("brain model output", () => {
     ).toThrow("invalid JSON");
   });
 
+  it("preserves one explicit durable supplier memory candidate", () => {
+    const output = parseBrainModelOutput({
+      spokenResponse: "Understood.",
+      responseAction: "speak",
+      jobObservations: [],
+      offerObservations: [],
+      signalKeys: [],
+      selectedOfferRevisionId: null,
+      supplierMemory: {
+        category: "communication_preference",
+        memoryKey: "preferred_call_time",
+        content: "Prefers calls after 16:00.",
+        evidenceQuote: "call me after four",
+      },
+    });
+    expect(output.supplierMemory).toEqual({
+      category: "communication_preference",
+      memoryKey: "preferred_call_time",
+      content: "Prefers calls after 16:00.",
+      evidenceQuote: "call me after four",
+    });
+  });
+
   it("preserves evidence sources for authenticated file intake", () => {
     const output = parseBrainModelOutput(
       {
@@ -137,8 +160,14 @@ describe("brain model output", () => {
     const supplier = buildBrainPrompt(request, {
       ...snapshot,
       purpose: "supplier_negotiation",
+      partyMemory:
+        '[{"key":"preferred_call_time","fact":"Prefers calls after 16:00."}]',
     });
     expect(supplier).toHaveProperty("offerContract");
     expect(supplier).not.toHaveProperty("jobContract");
+    expect(supplier).toHaveProperty(
+      "partyMemory",
+      '[{"key":"preferred_call_time","fact":"Prefers calls after 16:00."}]',
+    );
   });
 });

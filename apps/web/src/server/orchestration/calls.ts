@@ -12,6 +12,8 @@ import {
 import { createBrainToken, startOutboundCall } from "@pacta/elevenlabs";
 import { and, eq, inArray } from "drizzle-orm";
 
+import { loadConversationPartyMemoryPromptContext } from "@/server/crm/party-memory";
+
 function hash(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -63,18 +65,17 @@ export async function executeOutboundCall(conversationId: string) {
         providerConversationId: row.conversation.providerConversationId,
       };
     }
+    const partyMemory = row.conversation.purposeKey.startsWith("supplier_")
+      ? await loadConversationPartyMemoryPromptContext(db, row.conversation.id)
+      : "[]";
     const nativeRuntime =
       process.env.PACTA_ELEVENLABS_RUNTIME === "native_tools";
-    const brainToken = nativeRuntime ? null : createBrainToken();
+    const conversationToken = createBrainToken();
     await db
       .update(conversations)
       .set({
-        ...(brainToken
-          ? {
-              brainTokenHash: hash(brainToken),
-              brainTokenExpiresAt: new Date(Date.now() + 3 * 60 * 60_000),
-            }
-          : { brainTokenExpiresAt: new Date(0) }),
+        brainTokenHash: hash(conversationToken),
+        brainTokenExpiresAt: new Date(Date.now() + 3 * 60 * 60_000),
         status: "initiating",
       })
       .where(eq(conversations.id, conversationId));
@@ -85,9 +86,9 @@ export async function executeOutboundCall(conversationId: string) {
         agentPhoneNumberId: phoneNumberId,
         toNumber: row.party.phoneE164,
         runtime: nativeRuntime ? "native_tools" : "custom_llm",
-        ...(brainToken
+        ...(!nativeRuntime
           ? {
-              brainToken,
+              brainToken: conversationToken,
               context: {
                 workspace_id: row.conversation.workspaceId,
                 session_id: row.conversation.sessionId,
@@ -103,7 +104,13 @@ export async function executeOutboundCall(conversationId: string) {
               },
             }
           : {}),
-        dynamicVariables: { party_name: row.party.displayName },
+        dynamicVariables: {
+          party_name: row.party.displayName,
+          party_memory: partyMemory,
+          ...(row.conversation.purposeKey.startsWith("supplier_")
+            ? { party_memory_token: conversationToken }
+            : {}),
+        },
         callRecordingEnabled: false,
       });
       await db

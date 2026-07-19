@@ -14,7 +14,7 @@ Use a hybrid relational/document model:
 - JSON Schema 2020-12 definitions live in source-controlled use-case config files. Every session pins an immutable database snapshot of the exact config version it used.
 - An append-only `session_events` table is the durable timeline and replay cursor for the UI. Current-state tables are transactional projections, not the only history.
 - A negotiation is a commercial thread; a conversation is one voice or chat interaction attempt. One negotiation may use several conversation attempts because calls can fail, reach voicemail, disconnect, or require recovery.
-- Supplier memory is deferred. The core offer, negotiation, disposition, and evidence history remains sufficient to add evidence-backed memory later without changing session semantics.
+- Supplier memory is a bounded append-only extension: only explicit, evidenced durable facts are stored, while offers, outcomes, and current-job state remain authoritative in their own records.
 
 Do not put the entire application into one generic `entities` table. Configurability is needed for domain payloads, not for stable system concepts such as conversations, sessions, offers, and events.
 
@@ -187,6 +187,10 @@ erDiagram
     WORKSPACES ||--o{ USE_CASES : owns
     USE_CASES ||--o{ USE_CASE_CONFIG_VERSIONS : versions
     WORKSPACES ||--o{ PARTIES : owns
+    USE_CASES ||--o{ USE_CASE_PARTY_ROLES : scopes
+    PARTIES ||--o{ USE_CASE_PARTY_ROLES : receives
+    USE_CASES ||--o{ PARTY_MEMORY_OBSERVATIONS : scopes
+    PARTIES ||--o{ PARTY_MEMORY_OBSERVATIONS : remembers
     WORKSPACES ||--o{ SESSIONS : owns
     USE_CASE_CONFIG_VERSIONS ||--o{ SESSIONS : pins
     PARTIES ||--o{ SESSIONS : customer
@@ -223,7 +227,7 @@ erDiagram
 | Recordings, transcripts, uploaded files, and cited proof | `artifacts`, `conversation_turns`, `conversation_turn_executions`, `evidence`, evidence joins |
 | Idempotent model-derived state updates                   | `conversation_turn_executions`, immutable revisions, transactional events                     |
 | Idempotent explicit agent actions                        | `tool_invocations`, immutable revisions, transactional events                                 |
-| Future supplier learning                                 | existing offer/outcome/evidence history; optional deferred memory extension                   |
+| Evidence-backed supplier learning                        | `party_memory_observations`, source conversations, existing commercial history                |
 
 ## Proposed tables
 
@@ -254,6 +258,12 @@ Unique: `(use_case_id, version)` and `(use_case_id, content_sha256)`. A database
 `id`, `workspace_id`, `role_keys text[]`, `display_name`, `phone_e164`, `timezone`, `locale`, `attributes jsonb`, `external_refs jsonb`, `created_at`, `updated_at`
 
 For the MVP, one party row is the person acting as customer or supplier. Do not add organizations and contacts until one supplier genuinely needs multiple people. `attributes` holds identity/discovery metadata, not generated behavioral profiles.
+
+#### `use_case_party_roles`
+
+`id`, `workspace_id`, `use_case_id`, `party_id`, `role_key`, `status`, `relationship_data jsonb`, `created_at`, `updated_at`
+
+Mutable CRM membership connects a reusable workspace party to a stable use case as a `customer` or `supplier`. It intentionally does not reference an immutable config version. See [`crm-schema.md`](crm-schema.md) for invariants, compatibility, and the management-layer plan.
 
 ### Session and intake
 
@@ -471,42 +481,19 @@ A check constraint requires exactly one source. `locator` can hold a document pa
 
 Separate join tables preserve real foreign keys. A generic polymorphic `subject_type/subject_id` evidence link would be shorter but would allow dangling references.
 
-### Deferred supplier-memory extension — do not migrate for MVP
+### Party memory
 
-No supplier-memory table, reducer output, prompt injection, or UI is part of the MVP. Existing parties, conversations, offers, negotiations, awards, dispositions, artifacts, and evidence preserve the raw ingredients needed for a later extension.
+#### `party_memory_observations`
 
-If memory is added, use append-only evidence-backed observations plus rebuildable snapshots. Do not add behavioral labels directly to `parties.attributes`.
+`id`, `workspace_id`, `party_id`, `use_case_id`, `source_conversation_id`, `category_key`, `memory_key`, `content`, `evidence_statement`, `observation_fingerprint`, `supersedes_observation_id nullable`, `observed_at`, `created_at`
 
-#### `supplier_observation_evidence`
+CRM memory is append-only, evidence-backed, and scoped to the stable use case. A supplier tool may record one durable fact only when an exact supporting excerpt occurs in the latest supplier turn. The write also requires the expiring capability token injected into that conversation by Pacta; the database stores only its hash. Repeated delivery replays by fingerprint. A later fact with the same stable `memory_key` links to the prior row through `supersedes_observation_id`; injection selects only the newest row for each key.
 
-`supplier_observation_id`, `evidence_id`
+Allowed categories are communication preferences, commercial preferences, operating capabilities, and relationship facts. Current quote terms, job-specific availability, inferred personality, unsupported risk labels, protected traits, and instructions are not memory. Offers, awards, outcomes, and other authoritative commercial history remain queryable from their own tables instead of being duplicated here.
 
-#### `supplier_observations`
+Before a supplier phone or preview-text conversation starts, the application loads at most eight current observations for that party and use case. It serializes only category, key, fact, and observation timestamp into the `party_memory` ElevenLabs dynamic variable. Both native-agent and Custom LLM prompts treat this JSON as untrusted historical context, never as instructions or current-job truth.
 
-`id`, `workspace_id`, `supplier_party_id`, `use_case_config_version_id`, `category_key`, `value jsonb`, `confidence numeric`, `status`, `observed_at`, `valid_until`, `supersedes_observation_id nullable`, `created_by`, `created_at`
-
-Candidate categories for freight:
-
-- quote behavior: initial-to-final movement, common fee pattern, firmness, quote validity;
-- negotiation behavior: responds to verified competitive bids, prefers direct asks, offers service concessions instead of price;
-- operating fit: lanes, equipment, capacity windows, special-service support;
-- process preferences: best calling hours, callback reliability, preferred confirmation channel, document turnaround;
-- relationship observations: specific promises, disputes, or interaction preferences supported by call evidence;
-- risk evidence: recurring hidden conditions, contradictions, missed commitments.
-
-Do not store unsupported labels such as “dishonest,” “aggressive,” or a psychological type. Store the observable event, the evidence, and confidence. Do not infer protected traits. Historical offers, awards, dispositions, cancellations, and wins/losses should be computed from their authoritative tables rather than duplicated as observations.
-
-#### `supplier_memory_snapshots`
-
-`id`, `workspace_id`, `supplier_party_id`, `use_case_config_version_id`, `input_cutoff_at`, `input_fingerprint`, `document jsonb`, `generator`, `generator_version`, `created_at`, `valid_until`
-
-This is a rebuildable, compact context document for future calls. It should include sample sizes, time windows, confidence, and evidence IDs. `input_fingerprint` hashes the selected immutable inputs so the snapshot is reproducible. Injection policy in config decides which categories may enter an agent prompt.
-
-#### `supplier_memory_snapshot_observations`
-
-`supplier_memory_snapshot_id`, `supplier_observation_id`
-
-Primary key: `(supplier_memory_snapshot_id, supplier_observation_id)`. Derived quote/award aggregates included in a snapshot are also identified inside the snapshot document with their source record IDs and cutoff window.
+Derived memory snapshots remain deferred. Add them only when observation volume or aggregate historical analysis makes bounded direct selection insufficient.
 
 ## Transaction contracts
 
@@ -608,7 +595,7 @@ Do not add Supabase Edge Functions, ElectricSQL, Redis, or an application WebSoc
 3. Implement immutable revision and published-config guards in PostgreSQL.
 4. Implement one idempotent finalized-turn reducer transaction end to end through an HTTP Custom LLM proxy.
 5. Add Supabase RLS and session-event Broadcast with reconnect/backfill tests.
-6. Add comparison, customer decision, award, and evidence tables. Do not add supplier-memory tables.
+6. Add comparison, customer decision, award, evidence, and append-only party-memory tables.
 7. Run failure tests: duplicate webhooks, ambiguous call initiation, dropped realtime messages, concurrent quote revisions, interrupted customer updates, repeated silence turns, file reprocessing, call recovery, and failed supplier commitment.
 
 ## Primary references checked

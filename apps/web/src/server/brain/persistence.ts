@@ -42,6 +42,8 @@ import {
 } from "@pacta/use-case-config";
 import { and, desc, eq, gt } from "drizzle-orm";
 
+import { loadConversationPartyMemoryPromptContext } from "@/server/crm/party-memory";
+
 import {
   brainOutputSchema,
   type BrainOutput,
@@ -337,6 +339,9 @@ async function loadSnapshot(
   const config = useCaseConfigSchema.parse(
     configRow?.document,
   ) as UseCaseConfig;
+  const partyMemory = extra.purpose.startsWith("supplier_")
+    ? await loadConversationPartyMemoryPromptContext(db, extra.conversation_id)
+    : "[]";
 
   let job: Record<string, unknown> = {};
   const [jobRow] = await db
@@ -448,6 +453,7 @@ async function loadSnapshot(
       job,
       offer,
       negotiation,
+      partyMemory,
       materialContext: [
         ...visibleEvents.reverse().map((event) => ({
           eventSeq: event.eventSeq,

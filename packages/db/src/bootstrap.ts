@@ -15,6 +15,7 @@ import {
   parties,
   sessions,
   sessionSuppliers,
+  useCasePartyRoles,
   useCaseConfigVersions,
   useCases,
   workspaces,
@@ -90,7 +91,8 @@ export async function publishUseCaseConfiguration(
 }
 
 export type SessionPartyInput = {
-  displayName: string;
+  partyId?: string;
+  displayName?: string;
   phoneE164?: string;
   locale?: string;
   attributes?: Record<string, unknown>;
@@ -115,18 +117,64 @@ export async function createSourcingSession(
     Date.now() + (input.brainTokenTtlMinutes ?? 180) * 60_000,
   );
   return db.transaction(async (tx) => {
-    const [customer] = await tx
-      .insert(parties)
-      .values({
-        workspaceId: input.workspaceId,
-        roleKeys: ["customer"],
-        displayName: input.customer.displayName,
-        phoneE164: input.customer.phoneE164,
-        locale: input.customer.locale ?? "en",
-        attributes: input.customer.attributes ?? {},
-      })
-      .returning();
-    if (!customer) throw new Error("Failed to create customer.");
+    const [configVersion] = await tx
+      .select({ useCaseId: useCaseConfigVersions.useCaseId })
+      .from(useCaseConfigVersions)
+      .where(
+        and(
+          eq(useCaseConfigVersions.id, input.configVersionId),
+          eq(useCaseConfigVersions.workspaceId, input.workspaceId),
+        ),
+      );
+    if (!configVersion)
+      throw new Error(
+        "Configuration does not belong to the session workspace.",
+      );
+    const useCaseId = configVersion.useCaseId;
+
+    async function resolveParty(
+      partyInput: SessionPartyInput,
+      roleKey: "customer" | "supplier",
+    ) {
+      if (partyInput.partyId) {
+        const [existing] = await tx
+          .select({ party: parties })
+          .from(useCasePartyRoles)
+          .innerJoin(parties, eq(parties.id, useCasePartyRoles.partyId))
+          .where(
+            and(
+              eq(useCasePartyRoles.workspaceId, input.workspaceId),
+              eq(useCasePartyRoles.useCaseId, useCaseId),
+              eq(useCasePartyRoles.partyId, partyInput.partyId),
+              eq(useCasePartyRoles.roleKey, roleKey),
+              eq(useCasePartyRoles.status, "active"),
+              eq(parties.workspaceId, input.workspaceId),
+            ),
+          );
+        if (!existing)
+          throw new Error(
+            `CRM ${roleKey} is not active for this use case and workspace.`,
+          );
+        return existing.party;
+      }
+      if (!partyInput.displayName)
+        throw new Error(`An ad-hoc ${roleKey} requires a display name.`);
+      const [created] = await tx
+        .insert(parties)
+        .values({
+          workspaceId: input.workspaceId,
+          roleKeys: [roleKey],
+          displayName: partyInput.displayName,
+          phoneE164: partyInput.phoneE164,
+          locale: partyInput.locale ?? "en",
+          attributes: partyInput.attributes ?? {},
+        })
+        .returning();
+      if (!created) throw new Error(`Failed to create ${roleKey}.`);
+      return created;
+    }
+
+    const customer = await resolveParty(input.customer, "customer");
     const [session] = await tx
       .insert(sessions)
       .values({
@@ -170,18 +218,7 @@ export async function createSourcingSession(
 
     const supplierGraphs = [];
     for (const [index, supplierInput] of input.suppliers.entries()) {
-      const [supplier] = await tx
-        .insert(parties)
-        .values({
-          workspaceId: input.workspaceId,
-          roleKeys: ["supplier"],
-          displayName: supplierInput.displayName,
-          phoneE164: supplierInput.phoneE164,
-          locale: supplierInput.locale ?? "en",
-          attributes: supplierInput.attributes ?? {},
-        })
-        .returning();
-      if (!supplier) throw new Error("Failed to create supplier.");
+      const supplier = await resolveParty(supplierInput, "supplier");
       const [sessionSupplier] = await tx
         .insert(sessionSuppliers)
         .values({

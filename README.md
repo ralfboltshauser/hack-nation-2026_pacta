@@ -160,6 +160,7 @@ Database integration tests run when `TEST_DATABASE_URL` is available. Provider-b
 | [`experiments/`](experiments/)                                       | Opt-in provider proofs with explicit pass/fail criteria               |
 | [`presentations/pacta-case-pitch/`](presentations/pacta-case-pitch/) | Standalone challenge pitch and generated visuals                      |
 | [`mascot/`](mascot/)                                                 | Blender source, browser viewer, motion, audio, and visual evidence    |
+| [`resources/`](resources/)                                           | Original challenge artifacts, verbatim notes, and checksums           |
 
 All JavaScript projects share one pnpm workspace and one root lockfile.
 
@@ -168,6 +169,7 @@ All JavaScript projects share one pnpm workspace and one root lockfile.
 - [Canonical product and call flow](docs/call-flow.md)
 - [Architecture decision: native ElevenLabs milestone tools](docs/decisions/0002-native-elevenlabs-milestone-tools.md)
 - [Database and authoritative-state model](docs/architecture/database-schema.md)
+- [CRM party and memory model](docs/architecture/crm-schema.md)
 - [Use-case configuration contract](docs/architecture/use-case-configuration.md)
 - [Implementation status and remaining milestones](docs/implementation-plan.md)
 

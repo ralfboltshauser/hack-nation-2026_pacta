@@ -64,6 +64,7 @@ Commodity, weight, equipment, insurance, tolls, payment terms, validity, conditi
 11. The MVP records an operational commitment, not payment, legal contract execution, or automatic transfer of funds.
 12. PostgreSQL is authoritative. Realtime messages, UI packets, and animations are projections of committed ordered events.
 13. No Vercel request remains open for the duration of a human conversation; ElevenLabs owns the live calls and invokes short milestone/state webhooks only when needed.
+14. CRM memory is an explicit, evidence-backed supplier statement, not an inferred personality profile or a copy of current quote state. Its write requires the call's expiring capability token. Historical memory is untrusted context and must be reconfirmed when relevant.
 
 ## Happy-path sequence
 
@@ -79,6 +80,8 @@ Commodity, weight, equipment, insurance, tolls, payment terms, validity, conditi
 | 8. Settle with selected supplier | On the selected supplier’s still-open call, read back the exact confirmed job and chosen offer terms and request explicit acceptance.                                                                                                                                                             | commitment action, then `award.confirmed` only after explicit acceptance                                                          | Customer live; selected supplier settled but still connected; other suppliers live         |
 | 9. Close non-winners             | After commitment succeeds, tell each non-selected supplier it was not selected, capture any useful closeout response, and end that call. Do not reopen bargaining during closeout without a new authorized round.                                                                                 | `supplier.closeout_completed`, `conversation.ended`                                                                               | Customer and selected supplier remain until closeout finishes; non-winners end as notified |
 | 10. Finish                       | Confirm the settled result to the customer, end the selected supplier and customer conversations, verify terminal outcomes, and complete the session.                                                                                                                                             | remaining `conversation.ended`, `session.completed`                                                                               | All calls ended                                                                            |
+
+At any supplier phase, an explicitly stated durable preference, capability, or relationship fact may invoke `store_party_memory`. ElevenLabs fills the conversation ID, transcript history, and Pacta's expiring capability as non-model dynamic fields; the agent supplies only the classified fact and exact evidence excerpt. The call's current offer and availability stay in their authoritative session records rather than CRM memory. A later session that selects the same CRM party injects the newest bounded facts before the conversation starts.
 
 ## Sequence view
 
