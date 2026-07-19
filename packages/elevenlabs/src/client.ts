@@ -35,8 +35,14 @@ export async function getSignedConversationUrl(input: {
     detail?: unknown;
   } | null;
   if (!response.ok || typeof body?.signed_url !== "string") {
+    const detail =
+      typeof body?.detail === "string"
+        ? `: ${body.detail}`
+        : body?.detail
+          ? `: ${JSON.stringify(body.detail)}`
+          : "";
     throw new Error(
-      `ElevenLabs did not issue a signed conversation URL (${response.status}).`,
+      `ElevenLabs did not issue a signed conversation URL (${response.status})${detail}.`,
     );
   }
   return body.signed_url;
