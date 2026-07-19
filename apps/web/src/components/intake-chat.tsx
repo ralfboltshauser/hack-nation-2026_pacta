@@ -273,7 +273,7 @@ function IntakeChatSession({
     <main className="intake-page">
       <header className="intake-header">
         <Link
-          href={backHref ?? `/?session=${sessionId}`}
+          href={backHref ?? `/negotiate?session=${sessionId}`}
           aria-label="Back to negotiation room"
         >
           <ArrowLeft size={16} />

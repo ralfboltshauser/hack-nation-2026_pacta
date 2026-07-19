@@ -748,6 +748,12 @@
 .pacta-3d-stage img {
   object-fit: contain;
   border-radius: 50%;
+  opacity: 0.94;
+  transition: opacity 220ms var(--ease-out);
+}
+
+.pacta-3d-stage[data-ready="true"] img {
+  opacity: 0;
 }
 
 .pacta-orbit {

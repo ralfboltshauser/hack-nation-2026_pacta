@@ -111,7 +111,9 @@ function SessionLauncher() {
         throw new Error(payload?.error ?? "The session could not be created.");
       if (!payload?.sessionId)
         throw new Error("The server did not return a session identifier.");
-      router.push(`/?session=${encodeURIComponent(payload.sessionId)}`);
+      router.push(
+        `/negotiate?session=${encodeURIComponent(payload.sessionId)}`,
+      );
     } catch (error) {
       setRequestError(
         error instanceof Error

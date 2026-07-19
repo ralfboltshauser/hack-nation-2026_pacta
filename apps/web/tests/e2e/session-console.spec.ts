@@ -1,5 +1,62 @@
 import { expect, test } from "@playwright/test";
 
+test("presents the Pacta story and opens the negotiation room", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await expect(
+    page.getByRole("heading", { name: /one request in/i }),
+  ).toBeVisible();
+  await expect(page.locator("canvas")).toBeVisible();
+  await expect(page.getByText(/pacta opens the market/i)).toBeAttached();
+  await expect(page.getByText(/only after it checks out/i)).toBeAttached();
+  await expect(
+    page.getByRole("heading", { name: /you choose.*supplier commits/i }),
+  ).toBeAttached();
+
+  await page.mouse.move(320, 280);
+  await expect(page.getByTestId("cursor-signal")).toHaveCSS("opacity", "1");
+
+  const landing = page.getByTestId("landing-page");
+  const marketRequest = page.getByTestId("market-request");
+  await landing.evaluate((element) => {
+    element.style.scrollBehavior = "auto";
+    element.scrollTop = document.getElementById("market")?.offsetTop ?? 0;
+  });
+  await expect(
+    page.getByRole("img", { name: /confirmed request branching/i }),
+  ).toBeVisible();
+  const requestStartTransform = await marketRequest.evaluate(
+    (element) => getComputedStyle(element).transform,
+  );
+  await landing.evaluate((element) => {
+    element.scrollTop =
+      (document.getElementById("market")?.offsetTop ?? 0) + 1_000;
+  });
+  await expect
+    .poll(() =>
+      marketRequest.evaluate((element) => getComputedStyle(element).transform),
+    )
+    .not.toBe(requestStartTransform);
+
+  await page.getByRole("link", { name: "Start a negotiation" }).first().click();
+  await expect(page).toHaveURL(/\/negotiate$/);
+  await expect(
+    page.getByRole("heading", { name: /one customer/i }),
+  ).toBeVisible();
+});
+
+test("redirects legacy session links to the negotiation room", async ({
+  page,
+}) => {
+  await page.goto("/?session=legacy-session");
+  await expect(page).toHaveURL(/\/negotiate\?session=legacy-session$/);
+  await expect(
+    page.getByRole("region", { name: "Live negotiation map" }),
+  ).toBeVisible();
+});
+
 test("validates and launches a negotiation session", async ({ page }) => {
   await page.route("**/api/sessions", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
@@ -19,7 +76,7 @@ test("validates and launches a negotiation session", async ({ page }) => {
     });
   });
 
-  await page.goto("/");
+  await page.goto("/negotiate");
   await expect(
     page.getByRole("heading", { name: /one customer/i }),
   ).toBeVisible();
@@ -48,7 +105,7 @@ test("validates and launches a negotiation session", async ({ page }) => {
   await page.getByRole("button", { name: "Remove supplier 3" }).click();
 
   await page.getByRole("button", { name: "Start negotiation" }).click();
-  await expect(page).toHaveURL(/\?session=session-demo$/);
+  await expect(page).toHaveURL(/\/negotiate\?session=session-demo$/);
   await expect(
     page.getByRole("region", { name: "Live negotiation map" }),
   ).toBeVisible();
@@ -56,4 +113,10 @@ test("validates and launches a negotiation session", async ({ page }) => {
     "Connecting to the live session",
   );
   await expect(page.getByText("Verified event stream")).toHaveCount(0);
+
+  const liveMascot = page.locator(".pacta-3d-stage");
+  await expect(liveMascot).toHaveAttribute("data-ready", "true", {
+    timeout: 15_000,
+  });
+  await expect(liveMascot.locator("img")).toHaveCSS("opacity", "0");
 });
