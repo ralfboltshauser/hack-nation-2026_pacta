@@ -168,6 +168,53 @@ async function upsertAgent(
   return { agentId: created.agentId, operation: "created" as const };
 }
 
+async function enforceCapabilityOnlyCustomLlm(
+  apiKey: string,
+  agentId: string,
+  url: string,
+) {
+  // ElevenLabs PATCH preserves a previously configured nested api_key when the
+  // field is omitted, so explicitly clear it after the typed SDK upsert.
+  const response = await fetch(
+    `https://api.elevenlabs.io/v1/convai/agents/${agentId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        "xi-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        conversation_config: {
+          agent: {
+            prompt: {
+              llm: "custom-llm",
+              custom_llm: {
+                url: `${url}/api/v1/chat/completions`,
+                model_id: "pacta",
+                api_key: null,
+                api_type: "chat_completions",
+              },
+            },
+          },
+        },
+      }),
+    },
+  );
+  const body = (await response.json().catch(() => null)) as {
+    conversation_config?: {
+      agent?: { prompt?: { custom_llm?: { api_key?: unknown } } };
+    };
+  } | null;
+  if (!response.ok)
+    throw new Error(
+      `ElevenLabs did not clear the Custom LLM API key (${response.status}).`,
+    );
+  if (body?.conversation_config?.agent?.prompt?.custom_llm?.api_key !== null)
+    throw new Error(
+      "ElevenLabs Custom LLM API key read-back was not explicitly null.",
+    );
+}
+
 async function main() {
   const apply = process.argv.includes("--apply");
   const apiKey = required("ELEVENLABS_API_KEY");
@@ -217,6 +264,10 @@ async function main() {
     config: supplierConfig(url),
     platformSettings: settings,
   });
+  await Promise.all([
+    enforceCapabilityOnlyCustomLlm(apiKey, customerResult.agentId, url),
+    enforceCapabilityOnlyCustomLlm(apiKey, supplierResult.agentId, url),
+  ]);
   console.log(
     JSON.stringify(
       {
