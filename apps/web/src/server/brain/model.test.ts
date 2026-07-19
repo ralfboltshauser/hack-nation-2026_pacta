@@ -6,47 +6,32 @@ import { describe, expect, it } from "vitest";
 
 import { buildBrainPrompt, parseBrainModelOutput } from "./model";
 
-const signals = {
-  jobConfirmed: false,
-  jobCorrectionRequested: false,
-  supplierDeclined: false,
-  callbackRequested: false,
-  offerIsFinal: false,
-  selectedOfferRevisionId: null,
-  supplierAcceptedExactTerms: false,
-  customerDeclinedAll: false,
-};
-
 describe("brain model output", () => {
   it("decodes use-case-agnostic JSON observation values", () => {
     const output = parseBrainModelOutput({
-      spokenResponse: "Thanks.",
-      responseAction: "speak",
-      reduction: {
-        jobObservations: [
-          {
-            path: "/origin/city",
-            valueJson: '"Zurich"',
-            evidenceQuote: "Zurich",
-            evidenceSource: "human_turn",
-          },
-          {
-            path: "/specialServices",
-            valueJson: "[]",
-            evidenceQuote: "no special services",
-            evidenceSource: null,
-          },
-        ],
-        offerObservations: [
-          {
-            path: "/lineItems",
-            valueJson: '[{"code":"linehaul","amountMinor":136000}]',
-            evidenceQuote: "linehaul 136000 minor units",
-            evidenceSource: "human_turn",
-          },
-        ],
-        signals,
-      },
+      say: "Thanks.",
+      act: "speak",
+      job: [
+        {
+          path: "/origin/city",
+          json: '"Zurich"',
+          quote: "Zurich",
+        },
+        {
+          path: "/specialServices",
+          json: "[]",
+          quote: "no special services",
+        },
+      ],
+      offer: [
+        {
+          path: "/lineItems",
+          json: '[{"code":"linehaul","amountMinor":136000}]',
+          quote: "linehaul 136000 minor units",
+        },
+      ],
+      signals: ["job_confirmed"],
+      selectedOfferRevisionId: null,
     });
 
     expect(output.reduction.jobObservations[0]?.value).toBe("Zurich");
@@ -57,27 +42,53 @@ describe("brain model output", () => {
     expect(output.reduction.offerObservations[0]?.value).toEqual([
       { code: "linehaul", amountMinor: 136000 },
     ]);
+    expect(output.reduction.signals.jobConfirmed).toBe(true);
+    expect(output.reduction.signals.offerIsFinal).toBe(false);
   });
 
   it("rejects an observation that is not valid JSON", () => {
     expect(() =>
       parseBrainModelOutput({
-        spokenResponse: "Thanks.",
-        responseAction: "speak",
-        reduction: {
-          jobObservations: [
-            {
-              path: "/origin/city",
-              valueJson: "Zurich",
-              evidenceQuote: "Zurich",
-              evidenceSource: "human_turn",
-            },
-          ],
-          offerObservations: [],
-          signals,
-        },
+        say: "Thanks.",
+        act: "speak",
+        job: [
+          {
+            path: "/origin/city",
+            json: "Zurich",
+            quote: "Zurich",
+          },
+        ],
+        offer: [],
+        signals: [],
+        selectedOfferRevisionId: null,
       }),
     ).toThrow("invalid JSON");
+  });
+
+  it("preserves evidence sources for authenticated file intake", () => {
+    const output = parseBrainModelOutput(
+      {
+        say: "Please confirm the pickup city.",
+        act: "speak",
+        job: [
+          {
+            path: "/origin/city",
+            json: '"Zurich"',
+            quote: "Pickup: Zurich",
+            source: "attachment",
+          },
+        ],
+        offer: [],
+        signals: [],
+        selectedOfferRevisionId: null,
+      },
+      "intake",
+    );
+
+    expect(output.reduction.jobObservations[0]).toMatchObject({
+      value: "Zurich",
+      evidenceSource: "attachment",
+    });
   });
 
   it("sends each role only the contracts it needs", async () => {
