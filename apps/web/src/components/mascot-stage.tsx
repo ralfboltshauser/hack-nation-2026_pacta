@@ -51,7 +51,7 @@ interface MotionController {
 }
 
 interface MascotStageProps {
-  className?: string;
+  className?: string | undefined;
   eventId?: string;
 }
 
@@ -455,20 +455,20 @@ export function MascotStage({
       ref={hostRef}
       type="button"
       className={className}
+      data-failed={failed ? "true" : undefined}
       aria-label="Play a random Pacta animation"
       onClick={playRandomAction}
     >
       <canvas ref={canvasRef} aria-hidden="true" />
-      {failed ? (
-        <Image
-          className="mascot-poster"
-          src={POSTER_URL}
-          alt=""
-          fill
-          sizes="(max-width: 760px) 250px, 360px"
-          priority
-        />
-      ) : null}
+      <Image
+        className="mascot-poster"
+        src={POSTER_URL}
+        alt=""
+        fill
+        sizes="(max-width: 760px) 250px, 560px"
+        fetchPriority="high"
+        loading="eager"
+      />
     </button>
   );
 }

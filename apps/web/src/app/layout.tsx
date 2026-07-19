@@ -8,7 +8,7 @@ import "./session-console.css";
 export const metadata: Metadata = {
   title: "Pacta — AI negotiation orchestrator",
   description:
-    "Use-case-agnostic, real-time multi-party negotiation orchestration.",
+    "Use-case-configurable, human-gated multi-party negotiation orchestration.",
 };
 
 export default function RootLayout({

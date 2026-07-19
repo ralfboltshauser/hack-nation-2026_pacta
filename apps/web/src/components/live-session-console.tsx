@@ -664,7 +664,7 @@ function Header({
           <i /> {statusLabel}
         </span>
         <Clock />
-        <Link href="/" aria-label="Start a new negotiation">
+        <Link href="/negotiate" aria-label="Start a new negotiation">
           <RotateCcw size={14} />
         </Link>
       </div>
