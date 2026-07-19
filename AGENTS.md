@@ -25,3 +25,21 @@ For difficult bugs—especially failures spanning providers, network boundaries,
 Never spawn Claude Code with API billing. Use only the claude.ai subscription login through `/home/ralf/.local/bin/claude`.
 
 Never use `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `apiKeyHelper`, Bedrock, Vertex, Foundry, gateway credentials, or `--bare` for Claude Code subagents. This machine has a root-owned managed policy at `/etc/claude-code/managed-settings.json` with `forceLoginMethod: "claudeai"` and a guarded `claude` wrapper. If subscription authentication is unavailable, fail closed instead of falling back to API billing.
+
+<!-- smithers:prefer-workflows START -->
+
+## Smithers workflows
+
+Use your best judgment, weighing speed, quality, and token usage, to decide
+whether a request should run as a [smithers.sh](https://smithers.sh) workflow
+or with regular subagents. Prefer a smithers workflow for multi-step plans and
+for work that benefits from retries, approvals, review, or replay; reach for
+plain subagents when a request is a quick one-off.
+
+The `smithers` skill is installed: run `smithers workflow list` to see the
+available workflows and `smithers workflow run <id>` to launch one.
+
+When a session ends successfully and the work could have been a smithers
+workflow, offer to turn the session into a reusable smithers workflow for next
+time.
+<!-- smithers:prefer-workflows END -->
