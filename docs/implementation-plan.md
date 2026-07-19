@@ -6,7 +6,7 @@ Target: a complete, evidence-backed session on `https://pacta.openexp.dev`
 
 This plan converts the accepted call flow and architecture into independently verifiable milestones. Every milestone must leave the repository deployable, produce evidence that its boundary works, remove temporary data/resources, and pass an explicit exit gate before the next milestone starts.
 
-This document records both the gated plan and current execution state. Infrastructure/deployment work is authorized by the active build request. Real outbound phone calls remain separately disarmed until explicit approval.
+This document records both the gated plan and current execution state. Infrastructure/deployment work is authorized by the active build request. Real outbound phone calls require separate explicit approval; that approval was given for the 2026-07-19 live demo.
 
 ## Current observed state
 
@@ -16,9 +16,9 @@ Verified on 2026-07-19:
 - The public GitHub repository `ralfboltshauser/hack-nation-2026_pacta` is pushed on `main`; GitHub CI passes on the protected implementation commit.
 - The manually created Supabase project is healthy. Seven migrations apply from a blank PostgreSQL 17 database and on the hosted project. The private bucket, anonymous Auth, membership-scoped RLS, and Realtime access were functionally tested.
 - Stripe Projects is initialized locally for inventory, but its Supabase resource creation failed at the provider boundary. The manual Supabase project is the accepted fallback; do not retry the broken resource.
-- The separate Vercel project `pacta-negotiator` uses `apps/web` as its monorepo root and is healthy at `https://pacta.openexp.dev`; the unrelated `pacta-character` project was not mutated. Production Supabase, model, security, and disarmed telephony variables are present. Its default function region is now `dub1`, beside Supabase Ireland; the change takes effect with the next deployment.
+- The separate Vercel project `pacta-negotiator` uses `apps/web` as its monorepo root and is healthy at `https://pacta.openexp.dev`; the unrelated `pacta-character` project was not mutated. Production Supabase, model, security, and telephony variables are present. Its default function region is `dub1`, beside Supabase Ireland.
 - The current private ElevenLabs customer and supplier agents still point to the production Custom LLM endpoint as a rollback path. ADR 0002 now selects separate native ElevenLabs staging agents with typed milestone webhook tools; production agent IDs must not switch until the safe gates pass. The workspace post-call webhook is HMAC-signed and its secret is stored only in Vercel.
-- Outbound telephony is fail-closed unless `PACTA_OUTBOUND_CALLS_ENABLED` is exactly `true`. It remains `false`; no friend phone has been called.
+- Outbound telephony is fail-closed unless `PACTA_OUTBOUND_CALLS_ENABLED` is exactly `true`. It was explicitly armed for the live demo on 2026-07-19; setting the variable back to `false` and redeploying disarms it without a source change.
 - The original Custom LLM shape, late-commit, shared-session-lock, and cross-region latency failures are fixed and evidenced. A later safe three-supplier trace completed each response in about 2.2–3.6 seconds, but two schema-valid model outputs still omitted required offer facts. This proved the remaining defect is the response-critical exhaustive extraction boundary, not Postgres or ElevenLabs transport.
 - A prior native webhook experiment already proved cross-conversation offer propagation and comparability guards. A new disposable text-only native-agent spike produced an exact nested job/offer payload including objects, arrays, two line items, booleans, integers, and an explicitly empty conditions array. No phone was called and all temporary agent/tool resources were deleted.
 - Authenticated private Realtime Broadcast and durable HTTP replay are verified in production. A first-connect `MissingPartition` race was reproduced, so the UI now retries the subscription with bounded backoff and relies on replay for correctness.

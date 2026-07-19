@@ -71,4 +71,8 @@ The visible failure layer was the unexpected HTTP 201. The earliest causal state
 
 ## Remaining uncertainty
 
-The available source, database, ElevenLabs, Twilio, GitHub, and Vercel CLI evidence does not identify which concurrent process re-armed the Vercel variable or its exact mutation timestamp. That attribution remains unknown. The resulting call attempt is fully bounded by provider evidence: it failed before connection, carried no audio, and incurred no charge. Voice-mode agent behavior remains unverified, so production outbound calls remain disarmed.
+The available source, database, ElevenLabs, Twilio, GitHub, and Vercel CLI evidence does not identify which concurrent process re-armed the Vercel variable or its exact mutation timestamp. That attribution remains unknown. The resulting call attempt is fully bounded by provider evidence: it failed before connection, carried no audio, and incurred no charge. Voice-mode agent behavior remained unverified at the end of this incident, so production outbound calls were left disarmed.
+
+## Explicit live-demo re-arm
+
+At 2026-07-19 15:22 Europe/Zurich, Ralf explicitly authorized an immediate live-demo re-arm and push to `main`. Before changing production state, a read-only ElevenLabs account check returned HTTP 200, found the configured Twilio phone-number integration, and found the Pacta customer and supplier agents. The application kill switch remains fail-closed in code; the production deployment is armed only through `PACTA_OUTBOUND_CALLS_ENABLED=true`, so it can be disarmed again without a source change.
