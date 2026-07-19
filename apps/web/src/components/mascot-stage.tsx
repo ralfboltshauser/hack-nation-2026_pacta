@@ -28,16 +28,8 @@ const eventActions: Record<string, CharacterAction> = {
   "job.confirmed": "happy",
   "job.revision_created": "curious",
   "offer.revision_created": "curious",
-  ready: "wave",
   "session.completed": "spin",
   "session.started": "wave",
-  "job-confirmed": "happy",
-  "offers-ready": "curious",
-  "customer-selects": "happy",
-  "confirm-offer": "curious",
-  "supplier-accepts": "happy",
-  "booking-confirmed": "happy",
-  complete: "spin",
 };
 
 const manualActions: CharacterAction[] = ["happy", "wave", "spin", "curious"];
@@ -59,7 +51,6 @@ interface MotionController {
 }
 
 interface MascotStageProps {
-  active: boolean;
   className?: string;
   eventId?: string;
 }
@@ -275,7 +266,6 @@ function actionForEvent(eventId: string | undefined) {
 }
 
 export function MascotStage({
-  active,
   className = "mascot-stage",
   eventId,
 }: MascotStageProps) {
@@ -465,7 +455,6 @@ export function MascotStage({
       ref={hostRef}
       type="button"
       className={className}
-      data-active={active ? "true" : "false"}
       aria-label="Play a random Pacta animation"
       onClick={playRandomAction}
     >

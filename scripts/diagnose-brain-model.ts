@@ -1,4 +1,4 @@
-import { getBuiltinUseCase } from "@pacta/use-case-config";
+import { getBuiltinUseCase } from "../packages/use-case-config/src/index";
 
 import { generateBrainOutput } from "../apps/web/src/server/brain/model";
 

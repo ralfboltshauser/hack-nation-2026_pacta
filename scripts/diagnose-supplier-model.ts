@@ -1,9 +1,9 @@
-import { reduceOfferDocument } from "@pacta/core";
+import { reduceOfferDocument } from "../packages/core/src/index";
 import {
   getBuiltinUseCase,
   getPointer,
   hasPointer,
-} from "@pacta/use-case-config";
+} from "../packages/use-case-config/src/index";
 
 import { generateBrainOutput } from "../apps/web/src/server/brain/model";
 

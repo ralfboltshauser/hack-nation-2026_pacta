@@ -122,7 +122,7 @@ function SessionLauncher() {
 
   return (
     <main className="launcher-shell">
-      <header className="console-header launcher-header">
+      <header className="launcher-header">
         <div className="brand">
           <span className="brand-mark">
             <Sparkles size={15} />
@@ -154,7 +154,7 @@ function SessionLauncher() {
           <div className="launcher-mascot">
             <span className="aura-ring aura-ring-one" aria-hidden="true" />
             <span className="aura-ring aura-ring-two" aria-hidden="true" />
-            <MascotStage active={false} />
+            <MascotStage />
           </div>
           <span className="launcher-eyebrow">
             <i />
@@ -231,7 +231,7 @@ function SessionLauncher() {
             )}
           </fieldset>
 
-          <fieldset className="phone-group supplier-phone-group">
+          <fieldset className="phone-group">
             <legend className="phone-group-heading">
               <span>Suppliers</span>
               <small>{supplierPhones.length} of 3</small>

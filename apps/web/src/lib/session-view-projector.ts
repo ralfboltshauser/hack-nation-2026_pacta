@@ -5,7 +5,6 @@ export type PartyState =
 
 export type ProjectedSessionFrame = {
   phase: number;
-  activity: string;
   customer: PartyState;
   customerName: string;
   customerRole: string;
@@ -72,28 +71,9 @@ function phase(status: string) {
   return 0;
 }
 
-const eventActivities: Record<string, string> = {
-  "conversation.initiated": "A call is ringing",
-  "conversation.connected": "A participant joined the negotiation",
-  "conversation.ended": "A participant left the call",
-  "conversation.initiation_failed": "A call could not be connected",
-  "job.revision_created": "Updating the configured job",
-  "offer.revision_created": "Normalizing a supplier offer",
-  "customer.decision_recorded": "Recording the customer’s selection",
-  "award.confirmed": "Supplier confirmed the exact terms",
-  "session.completed": "Transaction complete",
-};
-
-export function projectSessionView(
-  view: SessionView,
-  latestEventType?: string,
-): ProjectedSessionFrame {
+export function projectSessionView(view: SessionView): ProjectedSessionFrame {
   return {
     phase: phase(view.status),
-    activity:
-      latestEventType && eventActivities[latestEventType]
-        ? eventActivities[latestEventType]
-        : view.status.replaceAll("_", " "),
     customer: callState(view.customer.conversationStatus),
     customerName: view.customer.displayName,
     customerRole: view.customer.roleLabel,

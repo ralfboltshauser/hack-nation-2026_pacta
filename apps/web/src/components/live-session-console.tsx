@@ -29,7 +29,6 @@ type VisualCallState =
   | "calling"
   | "live"
   | "holding"
-  | "selected"
   | "confirming"
   | "confirmed"
   | "ended";
@@ -186,13 +185,11 @@ function VoiceConnection({
       ? 0.76
       : state === "holding"
         ? 0.34
-        : state === "selected"
-          ? 0.58
-          : state === "confirming"
-            ? 0.86
-            : state === "confirmed"
-              ? 0.42
-              : 0;
+        : state === "confirming"
+          ? 0.86
+          : state === "confirmed"
+            ? 0.42
+            : 0;
 
   const draw = (time: number) => {
     const intensity = focused ? 1 : baseIntensity;
@@ -221,7 +218,7 @@ function VoiceConnection({
 
   return (
     <g
-      className={`voice-connection state-${state} ${visible ? "is-visible" : ""} ${focused ? "is-focused" : ""}`}
+      className={`voice-connection state-${state} ${focused ? "is-focused" : ""}`}
     >
       <motion.path
         className="voice-base"
@@ -250,7 +247,7 @@ function VoiceConnection({
 function visualStatusLabel(state: VisualCallState) {
   if (state === "calling") return "Ringing";
   if (state === "holding") return "Holding";
-  if (state === "selected" || state === "confirming") return "Confirming";
+  if (state === "confirming") return "Confirming";
   if (state === "confirmed") return "Confirmed";
   if (state === "ended") return "Ended";
   if (state === "queued") return "Queued";
@@ -263,8 +260,7 @@ function SupplierInsight({ supplier }: { supplier: SupplierVisual }) {
   const tone =
     supplier.visualState === "confirmed"
       ? "green"
-      : supplier.visualState === "selected" ||
-          supplier.visualState === "confirming"
+      : supplier.visualState === "confirming"
         ? "blue"
         : supplier.visualState === "ended"
           ? "neutral"
@@ -274,8 +270,7 @@ function SupplierInsight({ supplier }: { supplier: SupplierVisual }) {
   const offerDetail =
     supplier.visualState === "confirmed"
       ? "Offer confirmed"
-      : supplier.visualState === "selected" ||
-          supplier.visualState === "confirming"
+      : supplier.visualState === "confirming"
         ? "Confirming"
         : supplier.visualState === "ended" && hasOffer
           ? supplier.negotiationOutcome === "selected_confirmed"
@@ -291,7 +286,7 @@ function SupplierInsight({ supplier }: { supplier: SupplierVisual }) {
       <span className="insight-link" aria-hidden="true" />
       <motion.div
         layout={reduceMotion ? false : "size"}
-        className={`supplier-insight tone-${tone} ${hasOffer ? "has-offer" : "persona-only"}`}
+        className={`supplier-insight tone-${tone}`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{
@@ -416,13 +411,7 @@ function CallNode({
   );
 }
 
-function PactaCore({
-  event,
-  realtimeStatus,
-}: {
-  event: EventPresentation;
-  realtimeStatus: "connecting" | "live" | "error";
-}) {
+function PactaCore({ event }: { event: EventPresentation }) {
   const reduceMotion = useReducedMotion();
   return (
     <div
@@ -436,11 +425,7 @@ function PactaCore({
         <span className="pacta-orbit orbit-one" />
         <span className="pacta-orbit orbit-two" />
         <span className="pacta-signal">
-          <MascotStage
-            active={realtimeStatus === "live"}
-            className="pacta-3d-stage"
-            eventId={event.id}
-          />
+          <MascotStage className="pacta-3d-stage" eventId={event.id} />
         </span>
       </div>
       <div className="pacta-label">
@@ -690,20 +675,15 @@ function Header({
 export function LiveSessionConsole({ sessionId }: { sessionId: string }) {
   const live = useSessionEvents(sessionId);
   const frame = useMemo<ProjectedSessionFrame>(() => {
-    if (live.view)
-      return projectSessionView(live.view, live.events.at(-1)?.eventType);
+    if (live.view) return projectSessionView(live.view);
     return {
       phase: 0,
-      activity:
-        live.status === "error"
-          ? "Unable to load this session"
-          : "Connecting to the durable event stream",
       customer: "queued",
       customerName: "Customer call",
       customerRole: "Calling agent",
       suppliers: [],
     };
-  }, [live.events, live.status, live.view]);
+  }, [live.view]);
   const sessionStatus = live.view?.status ?? "customer_intake";
   const awardStatus = live.view?.awardStatus ?? null;
   const suppliers = useMemo<SupplierVisual[]>(
@@ -795,10 +775,7 @@ export function LiveSessionConsole({ sessionId }: { sessionId: string }) {
             })}
           </svg>
 
-          <PactaCore
-            event={currentEvent}
-            realtimeStatus={live.status === "demo" ? "connecting" : live.status}
-          />
+          <PactaCore event={currentEvent} />
 
           <AnimatePresence>
             <CallNode

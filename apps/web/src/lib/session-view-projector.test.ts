@@ -58,7 +58,7 @@ const view: SessionView = {
 
 describe("session view projector", () => {
   it("projects real party state and normalized price without inventing suppliers", () => {
-    const result = projectSessionView(view, "customer.decision_recorded");
+    const result = projectSessionView(view);
     expect(result.phase).toBe(2);
     expect(result.customerName).toBe("Acme");
     expect(result.suppliers).toHaveLength(2);
@@ -68,6 +68,5 @@ describe("session view projector", () => {
       offer: "CHF 1,460",
     });
     expect(result.suppliers[1]?.state).toBe("closed");
-    expect(result.activity).toContain("customer");
   });
 });

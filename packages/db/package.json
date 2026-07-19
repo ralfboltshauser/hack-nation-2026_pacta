@@ -17,7 +17,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@pacta/core": "workspace:*",
     "@pacta/use-case-config": "workspace:*",
     "drizzle-orm": "0.45.2",
     "postgres": "3.4.9"
