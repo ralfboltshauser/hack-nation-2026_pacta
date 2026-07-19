@@ -33,6 +33,7 @@ The initial tool set is:
 - `submit_offer` — complete configured offer document, final/provisional state, and supporting evidence;
 - `get_customer_state` — current sourcing progress, comparable offers, and deterministic recommendation inputs;
 - `get_negotiation_state` — current negotiation state and only the anonymous comparable leverage that this supplier may hear;
+- `classify_negotiator_style` — an evidence-backed, session-local working classification that selects one of three fixed conversation playbooks; the request must include a direct supplier transcript excerpt;
 - `select_offer` — the customer's explicit choice of a current offer revision;
 - `commit_selected_offer` — the selected supplier's explicit acceptance of the exact snapshotted terms;
 - `record_supplier_outcome` — decline, no answer, callback, and non-selection closeout.
@@ -48,6 +49,8 @@ All authoritative session, conversation, negotiation, party, and config identifi
 - one current selection is permitted per decision revision;
 - one award is permitted per session;
 - terminal outcomes are monotonic.
+
+`classify_negotiator_style` is deliberately not durable personality profiling. The provider model chooses only among `tough_negotiator`, `lowballer_with_hidden_fees`, and `hard_sell_upseller`; the server verifies that the submitted evidence quote occurs in a finalized supplier turn, persists a revisable classification on this negotiation, and returns the fixed strategy. The agent never says the internal label aloud, and no playbook can override the confirmed job, verified state, or comparability rules.
 
 Do not mutate the working Custom LLM agents while proving this path. Provision separate native staging agents, keep the deployed Custom LLM endpoint temporarily as rollback, and switch configured agent IDs only after the safe gates pass.
 

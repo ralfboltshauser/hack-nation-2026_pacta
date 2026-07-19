@@ -1,4 +1,4 @@
-# Agent call orchestrator UI exploration
+# Agent call orchestrator UI prototype
 
 A fully mocked React interface that visualizes Pacta as an event orchestrator: it spawns a dedicated agent for the customer call, turns the resulting events into a structured job, then spawns one dedicated agent per supplier call. Every supplier call stays open while Pacta collects offers, injects counteroffers into the other calling agents, gathers revisions, presents all final offers to the customer, settles the chosen supplier, and closes the remaining calls.
 
@@ -25,9 +25,11 @@ Primary references:
 
 ## Run
 
+From the repository root:
+
 ```bash
-npm install
-npm run dev -- --host 0.0.0.0 --port 5186
+pnpm install --frozen-lockfile
+pnpm dev:prototype -- --host 0.0.0.0 --port 5186
 ```
 
 The simulation auto-plays. It uses forty small events grouped into six visible phases. The customer and supplier calls remain live through offer collection, negotiation, customer choice, and settlement. After the chosen supplier confirms, the other suppliers are rejected sequentially and every call is closed.

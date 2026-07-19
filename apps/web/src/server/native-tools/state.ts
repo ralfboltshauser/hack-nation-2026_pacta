@@ -1,6 +1,11 @@
 import "server-only";
 
-import { compareOffers, type ComparableOffer } from "@pacta/core";
+import {
+  compareOffers,
+  negotiatorStylePlaybooks,
+  negotiatorStyleSchema,
+  type ComparableOffer,
+} from "@pacta/core";
 import {
   awards,
   conversations,
@@ -61,10 +66,7 @@ export async function loadNativeConversationContext(
   };
 }
 
-export async function loadConfirmedJob(
-  db: PactaDatabase,
-  sessionId: string,
-) {
+export async function loadConfirmedJob(db: PactaDatabase, sessionId: string) {
   const [row] = await db
     .select({ job: jobs, revision: jobRevisions })
     .from(jobs)
@@ -111,10 +113,7 @@ export async function loadComparableOffers(
   return rows.map((row) => ({ ...row, data: jsonRecord(row.data) }));
 }
 
-export async function loadLatestAward(
-  db: PactaDatabase,
-  sessionId: string,
-) {
+export async function loadLatestAward(db: PactaDatabase, sessionId: string) {
   const [award] = await db
     .select()
     .from(awards)
@@ -132,15 +131,9 @@ export function comparisonState(
   return compareOffers(config, job, comparable);
 }
 
-export async function getCustomerState(
-  db: PactaDatabase,
-  rawBody: unknown,
-) {
+export async function getCustomerState(db: PactaDatabase, rawBody: unknown) {
   const body = nativeStateBodySchema.parse(rawBody);
-  const context = await loadNativeConversationContext(
-    db,
-    body.conversation_id,
-  );
+  const context = await loadNativeConversationContext(db, body.conversation_id);
   if (context.conversation.purposeKey !== "customer_intake")
     throw new Error("Only the customer conversation can read customer state.");
   const [job, comparable, award, supplierRows] = await Promise.all([
@@ -188,7 +181,7 @@ export async function getCustomerState(
           ? "Present the verified offers and configured recommendation, then ask the customer to select one exact offer."
           : sourcingReady
             ? "All supplier attempts are terminal and no comparable offer exists. Tell the customer truthfully and ask whether to end the session."
-            : "Briefly update the customer on verified progress, explain that supplier negotiations are still in progress, and continue waiting."
+            : "Briefly update the customer on verified progress, explain that supplier negotiations are still in progress, and continue waiting.";
   return {
     sessionStatus: context.session.status,
     job,
@@ -206,15 +199,9 @@ export async function getCustomerState(
   };
 }
 
-export async function getNegotiationState(
-  db: PactaDatabase,
-  rawBody: unknown,
-) {
+export async function getNegotiationState(db: PactaDatabase, rawBody: unknown) {
   const body = nativeStateBodySchema.parse(rawBody);
-  const context = await loadNativeConversationContext(
-    db,
-    body.conversation_id,
-  );
+  const context = await loadNativeConversationContext(db, body.conversation_id);
   if (
     context.conversation.purposeKey !== "supplier_negotiation" ||
     !context.conversation.negotiationId
@@ -266,6 +253,31 @@ export async function getNegotiationState(
     (offer) => offer.offerRevisionId === bestCompetitorId,
   );
   const ownSelected = award?.supplierPartyId === own.supplierId;
+  const counterpartyStyleDocument = jsonRecord(
+    jsonRecord(own.negotiation.data).counterpartyStyle,
+  );
+  const counterpartyStyleType = negotiatorStyleSchema.safeParse(
+    counterpartyStyleDocument.type,
+  );
+  const counterpartyStyle = counterpartyStyleType.success
+    ? {
+        ...counterpartyStyleDocument,
+        type: counterpartyStyleType.data,
+      }
+    : null;
+  const adaptiveStrategy = counterpartyStyle
+    ? negotiatorStylePlaybooks[counterpartyStyle.type]
+    : {
+        label: "Neutral evidence-gathering",
+        objective:
+          "Collect a complete comparable offer using brief, respectful questions until direct behavior supports a covered style.",
+        actions: [
+          "Ask one configured commercial question at a time.",
+          "Do not classify from tone alone when the transcript has no direct behavioral evidence.",
+        ],
+        avoid:
+          "Do not guess a personality or say an internal classification aloud.",
+      };
   const nextAction = !job.confirmed
     ? "Wait; the customer has not confirmed the job."
     : award?.status === "confirmed"
@@ -280,7 +292,7 @@ export async function getNegotiationState(
           ? "Present the confirmed job and collect every configured field required for a comparable offer."
           : bestCompetitor
             ? "A verified anonymous comparable alternative exists. Ask whether this supplier can improve its offer without inventing competitor identity or terms."
-            : "The current offer is comparable. Ask whether it is final and remain available while the customer decides."
+            : "The current offer is comparable. Ask whether it is final and remain available while the customer decides.";
   return {
     sessionStatus: context.session.status,
     job,
@@ -289,7 +301,9 @@ export async function getNegotiationState(
       phase: own.negotiation.phaseKey,
       outcome: own.negotiation.outcomeKey,
       supplierName: own.supplierName,
+      counterpartyStyle,
     },
+    adaptiveStrategy,
     ownOffer: own.offerRevision
       ? {
           revisionId: own.offerRevision.id,

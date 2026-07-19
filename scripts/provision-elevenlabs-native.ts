@@ -5,6 +5,10 @@ import { resolve } from "node:path";
 import { ElevenLabsClient, type ElevenLabs } from "@elevenlabs/elevenlabs-js";
 
 import {
+  negotiatorStylePromptGuide,
+  negotiatorStyles,
+} from "../packages/core/src/index";
+import {
   compileUseCaseToolSchemas,
   useCaseConfigSchema,
   type UseCaseConfig,
@@ -17,6 +21,7 @@ const CONFIRM_JOB_TOOL_NAME = "submit_confirmed_job";
 const GET_CUSTOMER_STATE_TOOL_NAME = "get_customer_state";
 const SELECT_OFFER_TOOL_NAME = "select_offer";
 const GET_NEGOTIATION_STATE_TOOL_NAME = "get_negotiation_state";
+const CLASSIFY_NEGOTIATOR_STYLE_TOOL_NAME = "classify_negotiator_style";
 const SUBMIT_OFFER_TOOL_NAME = "submit_offer";
 const COMMIT_SELECTED_OFFER_TOOL_NAME = "commit_selected_offer";
 const RECORD_SUPPLIER_OUTCOME_TOOL_NAME = "record_supplier_outcome";
@@ -26,6 +31,8 @@ const LEGACY_PREVIEW_TOOL_NAMES = {
   [SELECT_OFFER_TOOL_NAME]: "pacta_native_preview_select_offer_v0",
   [GET_NEGOTIATION_STATE_TOOL_NAME]:
     "pacta_native_preview_get_negotiation_state_v0",
+  [CLASSIFY_NEGOTIATOR_STYLE_TOOL_NAME]:
+    "pacta_native_preview_classify_negotiator_style_v0",
   [SUBMIT_OFFER_TOOL_NAME]: "pacta_native_preview_submit_offer_v0",
   [COMMIT_SELECTED_OFFER_TOOL_NAME]:
     "pacta_native_preview_commit_selected_offer_v0",
@@ -146,17 +153,18 @@ function milestoneTool(input: {
 function assertProviderToolSchema(request: ElevenLabs.ToolRequestModel) {
   const config = request.toolConfig;
   if (config.type !== "webhook") throw new Error("Expected a webhook tool.");
+  const toolName = config.name;
   const root = config.apiSchema?.requestBodySchema;
-  if (!root) throw new Error(`${config.name} has no request body schema.`);
+  if (!root) throw new Error(`${toolName} has no request body schema.`);
 
   function visit(value: unknown, path: string) {
     if (!value || typeof value !== "object" || Array.isArray(value))
-      throw new Error(`${config.name} has an invalid schema node at ${path}.`);
+      throw new Error(`${toolName} has an invalid schema node at ${path}.`);
     const node = value as Record<string, unknown>;
     if (node.type === "object") {
       const properties = node.properties;
       if (!properties || typeof properties !== "object")
-        throw new Error(`${config.name} has no properties at ${path}.`);
+        throw new Error(`${toolName} has no properties at ${path}.`);
       for (const [name, child] of Object.entries(properties))
         visit(child, `${path}.${name}`);
       return;
@@ -175,7 +183,7 @@ function assertProviderToolSchema(request: ElevenLabs.ToolRequestModel) {
       node.isOmitted === true;
     if (!hasValueSource)
       throw new Error(
-        `${config.name} literal ${path} needs a description or non-LLM value source.`,
+        `${toolName} literal ${path} needs a description or non-LLM value source.`,
       );
   }
 
@@ -285,15 +293,22 @@ You are speaking in English with one ${terminology.supplier.singular} in ${voice
 # Goal
 1. Call ${GET_NEGOTIATION_STATE_TOOL_NAME} at the first available turn to load the confirmed job and current negotiation state. Call it again after every accepted milestone and when you need fresh state after waiting.
 2. Present the compact confirmed job in one sentence, then ask once for the all-in price in Swiss francs.
-3. Use only terms explicitly stated by the human. Never invent pricing, insurance, tolls, dates, conditions, exclusions, or finality.
-4. The configured storage constants are currency "CHF" and line-item code "linehaul"; using them is not inventing a supplier term. Convert the stated major-unit price into integer minor units by multiplying by 100 (for example, 500 Swiss francs becomes 50000).
-5. When every model-supplied tool field is known, call ${SUBMIT_OFFER_TOOL_NAME} exactly once with the complete document. Deterministic normalized totals are server-owned and are intentionally absent from the tool. This step is important.
-6. Treat every tool result as authoritative. If rejected, ask only for the missing or invalid facts it returns. Never claim the ${terminology.offer.singular} was recorded before an accepted result.
-7. After an offer is accepted, call ${GET_NEGOTIATION_STATE_TOOL_NAME}. If anonymous leverage exists, negotiate without identifying another supplier or inventing hidden terms. A recorded offer is not a customer selection or supplier commitment.
-8. If state says this supplier was selected and commitment is pending, read back the exact selected job and offer terms. Only after the supplier explicitly accepts them, call ${COMMIT_SELECTED_OFFER_TOOL_NAME}. Do not claim commitment before its accepted result.
-9. If the supplier declines, requests a callback, or otherwise reaches a terminal outcome, call ${RECORD_SUPPLIER_OUTCOME_TOOL_NAME} with the exact outcome and optional factual detail.
-10. Notify a non-selected supplier only after ${GET_NEGOTIATION_STATE_TOOL_NAME} reports the winner's award is confirmed. Then call ${RECORD_SUPPLIER_OUTCOME_TOOL_NAME} with "not_selected_notified", say goodbye, and call end_call.
-11. After a confirmed winning commitment, thank the selected supplier and call end_call. Use skip_turn while waiting when no verified update exists.${voice ? " Use voicemail_detection only when a voicemail system, rather than a human, answers." : ""}
+3. Begin with the neutral evidence-gathering strategy. Once the supplier's words directly show one covered negotiation style, call ${CLASSIFY_NEGOTIATOR_STYLE_TOOL_NAME} with that style and an exact supplier quote. Follow the returned strategy on the next response. Reclassify only when later direct evidence clearly supports a different covered style.
+4. Treat the style as a private, session-local working tactic, not a fact about the person's identity. Never say the label aloud. Style guidance never overrides the confirmed job, tool state, honesty, or offer-comparability rules.
+5. Use only terms explicitly stated by the human. Never invent pricing, insurance, tolls, dates, conditions, exclusions, or finality.
+6. The configured storage constants are currency "CHF" and line-item code "linehaul"; using them is not inventing a supplier term. Convert the stated major-unit price into integer minor units by multiplying by 100 (for example, 500 Swiss francs becomes 50000).
+7. When every model-supplied tool field is known, call ${SUBMIT_OFFER_TOOL_NAME} exactly once with the complete document. Deterministic normalized totals are server-owned and are intentionally absent from the tool. This step is important.
+8. Treat every tool result as authoritative. If rejected, ask only for the missing or invalid facts it returns. Never claim the ${terminology.offer.singular} was recorded before an accepted result.
+9. After an offer is accepted, call ${GET_NEGOTIATION_STATE_TOOL_NAME}. Apply its adaptiveStrategy. If anonymous leverage exists, negotiate without identifying another supplier or inventing hidden terms. A recorded offer is not a customer selection or supplier commitment.
+10. If state says this supplier was selected and commitment is pending, read back the exact selected job and offer terms. Only after the supplier explicitly accepts them, call ${COMMIT_SELECTED_OFFER_TOOL_NAME}. Do not claim commitment before its accepted result.
+11. If the supplier declines, requests a callback, or otherwise reaches a terminal outcome, call ${RECORD_SUPPLIER_OUTCOME_TOOL_NAME} with the exact outcome and optional factual detail.
+12. Notify a non-selected supplier only after ${GET_NEGOTIATION_STATE_TOOL_NAME} reports the winner's award is confirmed. Then call ${RECORD_SUPPLIER_OUTCOME_TOOL_NAME} with "not_selected_notified", say goodbye, and call end_call.
+13. After a confirmed winning commitment, thank the selected supplier and call end_call. Use skip_turn while waiting when no verified update exists.${voice ? " Use voicemail_detection only when a voicemail system, rather than a human, answers." : ""}
+
+# Adaptive negotiation playbook
+Classify only from observable behavior in supplier words. Gruff tone by itself is insufficient. The classification tool verifies that the evidence quote exists in the supplier transcript.
+
+${negotiatorStylePromptGuide()}
 
 # Configured clarification guide
 ${configuredQuestionGuide(config, "offer")}
@@ -563,6 +578,32 @@ async function main() {
     required: ["conversation_id"],
     properties: contextProperties(false),
   });
+  const classifyNegotiatorStyleRequest = webhookTool({
+    name: CLASSIFY_NEGOTIATOR_STYLE_TOOL_NAME,
+    description:
+      "Set a private session-local negotiation strategy only after the supplier's exact words directly support one covered style. The server verifies the evidence quote against conversation history.",
+    url: `${baseUrl}/api/tools/elevenlabs/classify-negotiator-style`,
+    required: [
+      "conversation_id",
+      "conversation_history",
+      "negotiator_style",
+      "evidence_quote",
+    ],
+    properties: {
+      ...contextProperties(),
+      negotiator_style: {
+        type: "string",
+        enum: [...negotiatorStyles],
+        description:
+          "Observed session-local style. Choose tough_negotiator for direct resistance or refusal, lowballer_with_hidden_fees for a headline price with deferred or omitted costs, or hard_sell_upseller for pressure toward upgrades or bundles.",
+      },
+      evidence_quote: {
+        type: "string",
+        description:
+          "Exact short excerpt from a supplier turn that demonstrates the selected style. Never paraphrase or invent evidence.",
+      },
+    },
+  });
   const submitOfferRequest = milestoneTool({
     name: SUBMIT_OFFER_TOOL_NAME,
     description:
@@ -610,6 +651,7 @@ async function main() {
     getCustomerStateRequest,
     selectOfferRequest,
     getNegotiationStateRequest,
+    classifyNegotiatorStyleRequest,
     submitOfferRequest,
     commitSelectedOfferRequest,
     recordSupplierOutcomeRequest,
@@ -621,6 +663,7 @@ async function main() {
     existingCustomerStateTool,
     existingSelectOfferTool,
     existingNegotiationStateTool,
+    existingClassifyNegotiatorStyleTool,
     existingOfferTool,
     existingCommitOfferTool,
     existingSupplierOutcomeTool,
@@ -631,6 +674,7 @@ async function main() {
     exactToolWithLegacy(client, GET_CUSTOMER_STATE_TOOL_NAME),
     exactToolWithLegacy(client, SELECT_OFFER_TOOL_NAME),
     exactToolWithLegacy(client, GET_NEGOTIATION_STATE_TOOL_NAME),
+    exactToolWithLegacy(client, CLASSIFY_NEGOTIATOR_STYLE_TOOL_NAME),
     exactToolWithLegacy(client, SUBMIT_OFFER_TOOL_NAME),
     exactToolWithLegacy(client, COMMIT_SELECTED_OFFER_TOOL_NAME),
     exactToolWithLegacy(client, RECORD_SUPPLIER_OUTCOME_TOOL_NAME),
@@ -685,6 +729,12 @@ async function main() {
         operation: existingNegotiationStateTool ? "update" : "create",
         toolId: existingNegotiationStateTool?.id,
       },
+      classifyNegotiatorStyle: {
+        name: CLASSIFY_NEGOTIATOR_STYLE_TOOL_NAME,
+        endpoint: `${baseUrl}/api/tools/elevenlabs/classify-negotiator-style`,
+        operation: existingClassifyNegotiatorStyleTool ? "update" : "create",
+        toolId: existingClassifyNegotiatorStyleTool?.id,
+      },
       submitOffer: {
         name: SUBMIT_OFFER_TOOL_NAME,
         endpoint: `${baseUrl}/api/tools/elevenlabs/submit-offer`,
@@ -732,6 +782,7 @@ async function main() {
     customerStateTool,
     selectOfferTool,
     negotiationStateTool,
+    classifyNegotiatorStyleTool,
     offerTool,
     commitOfferTool,
     supplierOutcomeTool,
@@ -743,6 +794,11 @@ async function main() {
       client,
       existingNegotiationStateTool,
       getNegotiationStateRequest,
+    ),
+    upsertTool(
+      client,
+      existingClassifyNegotiatorStyleTool,
+      classifyNegotiatorStyleRequest,
     ),
     upsertTool(client, existingOfferTool, submitOfferRequest),
     upsertTool(client, existingCommitOfferTool, commitSelectedOfferRequest),
@@ -769,6 +825,7 @@ async function main() {
         loaded.config,
         [
           negotiationStateTool.toolId,
+          classifyNegotiatorStyleTool.toolId,
           offerTool.toolId,
           commitOfferTool.toolId,
           supplierOutcomeTool.toolId,
@@ -789,6 +846,7 @@ async function main() {
           getCustomerState: customerStateTool,
           selectOffer: selectOfferTool,
           getNegotiationState: negotiationStateTool,
+          classifyNegotiatorStyle: classifyNegotiatorStyleTool,
           submitOffer: offerTool,
           commitSelectedOffer: commitOfferTool,
           recordSupplierOutcome: supplierOutcomeTool,

@@ -23,11 +23,11 @@ The experiment uses a text message inside a normal agent conversation. It does n
 
 ## Run
 
-From this directory:
+Install once from the repository root, then run the isolated proof:
 
 ```bash
-npm install
-npm test
+pnpm install --frozen-lockfile
+pnpm --filter @pacta/experiment-elevenlabs-realtime-monitoring test
 ```
 
 The script reads `ELEVENLABS_API_KEY` from the repository-root `.env`. To avoid name-based agent selection, optionally add or export:

@@ -6,6 +6,7 @@ import {
   createDatabase,
   createSourcingSession,
   customerDecisions,
+  negotiations,
   publishUseCaseConfiguration,
   sessionEvents,
 } from "@pacta/db";
@@ -18,10 +19,8 @@ import {
   recordSupplierOutcome,
   selectOffer,
 } from "./decisions";
-import {
-  getCustomerState,
-  getNegotiationState,
-} from "./state";
+import { classifyNegotiatorStyle } from "./negotiator-style";
+import { getCustomerState, getNegotiationState } from "./state";
 import { submitConfirmedJob } from "./submit-confirmed-job";
 import { submitNativeOffer } from "./submit-offer";
 
@@ -125,7 +124,10 @@ describe.skipIf(!databaseUrl)("native v0 commercial flow", () => {
       const customerProviderId = `conv_customer_${crypto.randomUUID()}`;
       await db
         .update(conversations)
-        .set({ providerConversationId: customerProviderId, status: "connected" })
+        .set({
+          providerConversationId: customerProviderId,
+          status: "connected",
+        })
         .where(eq(conversations.id, graph.customer.conversation.id));
       const customerHistory = history(
         "I explicitly confirm the complete job exactly as stated.",
@@ -151,6 +153,32 @@ describe.skipIf(!databaseUrl)("native v0 commercial flow", () => {
             .where(eq(conversations.id, supplier.conversation.id)),
         ),
       );
+      const styleHistory = history(
+        "CHF 1,200 is only the base rate; tolls and unloading come later.",
+      );
+      const classified = await classifyNegotiatorStyle(db, {
+        conversation_id: providerIds[0],
+        conversation_history: styleHistory,
+        negotiator_style: "lowballer_with_hidden_fees",
+        evidence_quote: "tolls and unloading come later",
+      });
+      expect(classified).toMatchObject({
+        accepted: true,
+        created: true,
+        classification: {
+          type: "lowballer_with_hidden_fees",
+          revision: 1,
+        },
+      });
+      const classifiedState = await getNegotiationState(db, {
+        conversation_id: providerIds[0],
+      });
+      expect(classifiedState.negotiation.counterpartyStyle).toMatchObject({
+        type: "lowballer_with_hidden_fees",
+        evidenceQuote: "tolls and unloading come later",
+      });
+      expect(classifiedState.adaptiveStrategy.objective).toContain("all-in");
+
       const totals = [152_000, 146_000, 149_000];
       const submitted = await Promise.all(
         providerIds.map((conversationId, index) =>
@@ -165,8 +193,7 @@ describe.skipIf(!databaseUrl)("native v0 commercial flow", () => {
       );
       expect(
         submitted.every(
-          (result) =>
-            (result as { accepted?: boolean }).accepted === true,
+          (result) => (result as { accepted?: boolean }).accepted === true,
         ),
       ).toBe(true);
 
@@ -174,7 +201,8 @@ describe.skipIf(!databaseUrl)("native v0 commercial flow", () => {
         conversation_id: customerProviderId,
       });
       expect(customerState.offers).toHaveLength(3);
-      const recommendedId = customerState.comparison?.recommendedOfferRevisionId;
+      const recommendedId =
+        customerState.comparison?.recommendedOfferRevisionId;
       expect(recommendedId).toBeTruthy();
       const recommended = customerState.offers.find(
         (candidate) => candidate.offerRevisionId === recommendedId,
@@ -243,18 +271,24 @@ describe.skipIf(!databaseUrl)("native v0 commercial flow", () => {
             eq(sessionEvents.source, "elevenlabs_native_tool"),
           ),
         );
+      const [classifiedNegotiation] = await db
+        .select()
+        .from(negotiations)
+        .where(eq(negotiations.id, graph.suppliers[0]!.negotiation.id));
       expect(storedAwards).toHaveLength(1);
       expect(storedAwards[0]!.status).toBe("confirmed");
       expect(storedDecisions).toHaveLength(1);
-      expect(
-        milestoneEvents.map((event) => event.eventType),
-      ).toEqual(
+      expect(milestoneEvents.map((event) => event.eventType)).toEqual(
         expect.arrayContaining([
           "customer.decision_recorded",
           "award.confirmed",
+          "negotiation.counterparty_style_classified",
           "supplier.closeout_completed",
         ]),
       );
+      expect(classifiedNegotiation?.data).toMatchObject({
+        counterpartyStyle: { type: "lowballer_with_hidden_fees" },
+      });
     } finally {
       await client.end();
     }

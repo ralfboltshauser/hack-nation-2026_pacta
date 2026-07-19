@@ -103,6 +103,10 @@ export async function createSourcingSession(
     configVersionId: string;
     customer: SessionPartyInput;
     suppliers: SessionPartyInput[];
+    customerConversation?: {
+      channel: "voice" | "text_chat";
+      direction: "inbound" | "outbound";
+    };
     brainTokenTtlMinutes?: number;
     data?: Record<string, unknown>;
   },
@@ -153,8 +157,8 @@ export async function createSourcingSession(
         sessionId: session.id,
         partyId: customer.id,
         purposeKey: "customer_intake",
-        channel: "voice",
-        direction: "outbound",
+        channel: input.customerConversation?.channel ?? "voice",
+        direction: input.customerConversation?.direction ?? "outbound",
         provider: "elevenlabs",
         brainTokenHash: tokenHash(customerBrainToken),
         brainTokenExpiresAt: expiresAt,

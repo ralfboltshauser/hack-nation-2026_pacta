@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import "./globals.css";
+import "./doc-job.css";
 import "./live-session-console.css";
 import "./session-console.css";
 

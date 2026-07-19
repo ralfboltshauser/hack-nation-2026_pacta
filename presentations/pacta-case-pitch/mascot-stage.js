@@ -51,7 +51,11 @@ class MascotStage {
     this.camera = new THREE.OrthographicCamera(-3.2, 3.2, 2.8, -2.8, 0.1, 100);
     this.camera.position.set(0, 0.3, 11.5);
     this.camera.lookAt(0, 0.3, 0);
-    this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
+    this.renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true,
+      powerPreference: "high-performance",
+    });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.18;
@@ -109,18 +113,30 @@ class MascotStage {
     this.host.addEventListener("pointermove", (event) => {
       const bounds = this.host.getBoundingClientRect();
       this.pointerTarget.set(
-        THREE.MathUtils.clamp(((event.clientX - bounds.left) / bounds.width - 0.5) * 2, -1, 1),
-        THREE.MathUtils.clamp(-((event.clientY - bounds.top) / bounds.height - 0.5) * 2, -1, 1),
+        THREE.MathUtils.clamp(
+          ((event.clientX - bounds.left) / bounds.width - 0.5) * 2,
+          -1,
+          1,
+        ),
+        THREE.MathUtils.clamp(
+          -((event.clientY - bounds.top) / bounds.height - 0.5) * 2,
+          -1,
+          1,
+        ),
       );
     });
-    this.host.addEventListener("pointerleave", () => this.pointerTarget.set(0, 0));
+    this.host.addEventListener("pointerleave", () =>
+      this.pointerTarget.set(0, 0),
+    );
   }
 
   resize() {
     const { width, height } = this.host.getBoundingClientRect();
     const safeWidth = Math.max(1, width);
     const safeHeight = Math.max(1, height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, safeWidth < 260 ? 1.5 : 2));
+    this.renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio || 1, safeWidth < 260 ? 1.5 : 2),
+    );
     this.renderer.setSize(safeWidth, safeHeight, false);
     const aspect = safeWidth / safeHeight;
     const vertical = 5.6;
@@ -134,7 +150,8 @@ class MascotStage {
   draw() {
     const active = this.slide.classList.contains("active");
     const delta = Math.min(this.clock.getDelta(), 0.1);
-    if (active && !this.lastActive && this.motion) this.motion.play(this.action);
+    if (active && !this.lastActive && this.motion)
+      this.motion.play(this.action);
     this.lastActive = active;
     if (!active) return;
     const follow = 1 - Math.exp(-8 * delta);
@@ -144,4 +161,6 @@ class MascotStage {
   }
 }
 
-document.querySelectorAll(".mascot-3d").forEach((host) => new MascotStage(host));
+document
+  .querySelectorAll(".mascot-3d")
+  .forEach((host) => new MascotStage(host));

@@ -20,14 +20,14 @@
     "PACTA_DEMO_ACCESS_KEY",
     "PACTA_ELEVENLABS_RUNTIME",
     "PACTA_OUTBOUND_CALLS_ENABLED",
+    "REDUCER_MODEL",
     "SUPABASE_SECRET_KEY",
     "SUPABASE_STORAGE_BUCKET",
     "TEST_DATABASE_URL"
   ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "dependsOn": ["^build"]
     },
     "dev": {
       "cache": false,
@@ -42,8 +42,7 @@
       "outputs": ["coverage/**"]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"],
-      "outputs": ["*.tsbuildinfo"]
+      "dependsOn": ["^typecheck"]
     }
   }
 }

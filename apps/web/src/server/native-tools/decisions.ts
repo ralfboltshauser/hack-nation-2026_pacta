@@ -19,6 +19,7 @@ import { z } from "zod";
 
 import {
   comparisonState,
+  jsonRecord,
   loadComparableOffers,
   loadConfirmedJob,
   loadLatestAward,
@@ -86,10 +87,7 @@ export async function selectOffer(db: PactaDatabase, rawBody: unknown) {
       nextAction:
         "Ask the customer to explicitly select one exact offer or decline all offers.",
     };
-  const context = await loadNativeConversationContext(
-    db,
-    body.conversation_id,
-  );
+  const context = await loadNativeConversationContext(db, body.conversation_id);
   if (context.conversation.purposeKey !== "customer_intake")
     throw new Error("Only the customer conversation can select an offer.");
 
@@ -116,7 +114,8 @@ export async function selectOffer(db: PactaDatabase, rawBody: unknown) {
       .orderBy(desc(customerDecisions.createdAt))
       .limit(1);
     const requestedId = body.selected_offer_revision_id ?? null;
-    const requestedAction = body.action === "select" ? "selected" : "declined_all";
+    const requestedAction =
+      body.action === "select" ? "selected" : "declined_all";
     if (existingDecision) {
       if (
         existingDecision.action === requestedAction &&
@@ -153,7 +152,8 @@ export async function selectOffer(db: PactaDatabase, rawBody: unknown) {
       return {
         accepted: false as const,
         reason: "no_comparable_offers",
-        nextAction: "Continue supplier negotiations; no offer can be selected yet.",
+        nextAction:
+          "Continue supplier negotiations; no offer can be selected yet.",
       };
     const selected = requestedId
       ? comparable.find((offer) => offer.offerRevisionId === requestedId)
@@ -256,10 +256,7 @@ export const commitSelectedOfferBodySchema = z
   })
   .strict();
 
-export async function commitSelectedOffer(
-  db: PactaDatabase,
-  rawBody: unknown,
-) {
+export async function commitSelectedOffer(db: PactaDatabase, rawBody: unknown) {
   const body = commitSelectedOfferBodySchema.parse(rawBody);
   const latestUser = latestUserMessage(body.conversation_history);
   if (!latestUser)
@@ -269,10 +266,7 @@ export async function commitSelectedOffer(
       nextAction:
         "Read back the exact selected terms and ask the supplier for explicit commitment.",
     };
-  const context = await loadNativeConversationContext(
-    db,
-    body.conversation_id,
-  );
+  const context = await loadNativeConversationContext(db, body.conversation_id);
   const negotiationId = context.conversation.negotiationId;
   if (
     context.conversation.purposeKey !== "supplier_negotiation" ||
@@ -316,7 +310,8 @@ export async function commitSelectedOffer(
         created: false,
         awardId: awardRow.award.id,
         selectedOfferRevisionId: awardRow.award.selectedOfferRevisionId,
-        nextAction: "The same commitment is already recorded. Thank the supplier and close the call.",
+        nextAction:
+          "The same commitment is already recorded. Thank the supplier and close the call.",
       };
     if (awardRow.award.status !== "pending_commitment")
       throw new Error(`Award cannot commit from ${awardRow.award.status}.`);
@@ -385,10 +380,7 @@ export async function recordSupplierOutcome(
   rawBody: unknown,
 ) {
   const body = recordSupplierOutcomeBodySchema.parse(rawBody);
-  const context = await loadNativeConversationContext(
-    db,
-    body.conversation_id,
-  );
+  const context = await loadNativeConversationContext(db, body.conversation_id);
   const negotiationId = context.conversation.negotiationId;
   if (
     context.conversation.purposeKey !== "supplier_negotiation" ||
@@ -422,7 +414,8 @@ export async function recordSupplierOutcome(
         accepted: true as const,
         created: false,
         outcome: body.outcome,
-        nextAction: "The same supplier outcome is already recorded. Close the call.",
+        nextAction:
+          "The same supplier outcome is already recorded. Close the call.",
       };
 
     if (body.outcome === "not_selected_notified") {
@@ -434,11 +427,14 @@ export async function recordSupplierOutcome(
           nextAction:
             "Do not reject this supplier until the selected supplier has committed.",
         };
-      if (award.supplierPartyId === negotiationRow.sessionSupplier.supplierPartyId)
+      if (
+        award.supplierPartyId === negotiationRow.sessionSupplier.supplierPartyId
+      )
         return {
           accepted: false as const,
           reason: "selected_supplier_cannot_be_rejected",
-          nextAction: "This is the selected supplier. Do not send a non-selection notice.",
+          nextAction:
+            "This is the selected supplier. Do not send a non-selection notice.",
         };
     }
 
@@ -448,7 +444,10 @@ export async function recordSupplierOutcome(
         phaseKey: "closed",
         outcomeKey: body.outcome,
         closedAt: new Date(),
-        data: body.detail ? { detail: body.detail } : {},
+        data: {
+          ...jsonRecord(negotiationRow.negotiation.data),
+          ...(body.detail ? { detail: body.detail } : {}),
+        },
       })
       .where(eq(negotiations.id, negotiationRow.negotiation.id));
     await tx
@@ -457,7 +456,9 @@ export async function recordSupplierOutcome(
         status: body.outcome,
         dispositionReason: body.detail ?? body.outcome,
         closeoutStatus:
-          body.outcome === "not_selected_notified" ? "completed" : "not_required",
+          body.outcome === "not_selected_notified"
+            ? "completed"
+            : "not_required",
       })
       .where(eq(sessionSuppliers.id, negotiationRow.sessionSupplier.id));
     const eventType =

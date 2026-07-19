@@ -709,7 +709,7 @@ Green only when the complete commercial loop closes with truthful terminal outco
 
 ### Implement
 
-- Treat `ui-explorations/agent-call-orchestrator` as the desktop composition specification: customer on the left, Pacta in the center, suppliers spawning on the right, the phase tracker above, and event/offer capsules moving along explicit routes.
+- Treat `prototypes/agent-call-orchestrator` as the desktop composition specification: customer on the left, Pacta in the center, suppliers spawning on the right, the phase tracker above, and event/offer capsules moving along explicit routes.
 - Replace the exploration's circular waveform `PactaCore` with the actual 3D Pacta mascot. Voice/activity lines remain connections between participants and Pacta; the waveform orb is not the central identity anymore.
 - Reuse the accepted artifacts and behavior from `mascot/` rather than remodeling the character:
   - `pacta-character-integrated.glb` as the runtime model;

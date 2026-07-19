@@ -30,19 +30,19 @@ Run these commands from the repository root:
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm --filter pacta-character dev
+pnpm --filter @pacta/mascot dev
 ```
 
 Production build and browser regression suite:
 
 ```bash
-pnpm --filter pacta-character build
-pnpm --filter pacta-character visual-check
+pnpm --filter @pacta/mascot build
+pnpm --filter @pacta/mascot visual-check
 ```
 
 The visual check expects Google Chrome at `/usr/bin/google-chrome`. Override the
 target with
-`PACTA_URL=https://example.test pnpm --filter pacta-character visual-check`
+`PACTA_URL=https://example.test pnpm --filter @pacta/mascot visual-check`
 when validating a deployed build.
 
 ## Rebuild the model
@@ -69,7 +69,7 @@ Recreate the public masters from the checked-in raw generations without an API
 call:
 
 ```bash
-pnpm --filter pacta-character process-audio
+pnpm --filter @pacta/mascot process-audio
 ```
 
 Generating replacements requires a local ElevenLabs credential and spends API
@@ -77,9 +77,9 @@ credits. The key is read from the environment and is never bundled:
 
 ```bash
 test -n "$ELEVENLABS_API_KEY"
-pnpm --filter pacta-character generate-audio -- --force
+pnpm --filter @pacta/mascot generate-audio -- --force
 node mascot/web/scripts/generate-audio.mjs --candidates --force
-pnpm --filter pacta-character process-audio
+pnpm --filter @pacta/mascot process-audio
 ```
 
 The exact prompts and request parameters are in

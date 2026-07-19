@@ -28,6 +28,7 @@ experiments/**/bin/
 # Local tooling and OS files
 *.log
 .DS_Store
+*.blend1
 
 .projects/cache
 .projects/vault
@@ -37,4 +38,3 @@ experiments/**/bin/
 .env
 .env.*
 !.env.example
-.vercel

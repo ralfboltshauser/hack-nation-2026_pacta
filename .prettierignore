@@ -8,7 +8,7 @@ node_modules
 experiments
 mascot
 resources
-ui-explorations
+prototypes
 packages/db/migrations/meta
 pnpm-lock.yaml
 *.blend

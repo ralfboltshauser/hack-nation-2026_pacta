@@ -1,5 +1,5 @@
 {
-  "name": "elevenlabs-shared-state-negotiation-proof",
+  "name": "@pacta/experiment-elevenlabs-shared-state-negotiation",
   "version": "0.1.0",
   "private": true,
   "type": "module",
