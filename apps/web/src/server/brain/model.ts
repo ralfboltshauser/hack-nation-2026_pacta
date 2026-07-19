@@ -147,6 +147,71 @@ export type IntakeBrainInput = {
   file?: { data: Uint8Array; mediaType: string; filename: string };
 };
 
+function fieldGuide(
+  fields: UseCaseConfig["job"]["fields"] | UseCaseConfig["offer"]["fields"],
+) {
+  return fields.map(({ path, label, priority, questions }) => ({
+    path,
+    label,
+    priority,
+    questions,
+  }));
+}
+
+function compactJobContract(config: UseCaseConfig) {
+  return {
+    schema: config.job.schema,
+    completion: config.job.completion,
+    fields: fieldGuide(config.job.fields),
+  };
+}
+
+function compactOfferContract(config: UseCaseConfig) {
+  return {
+    schema: config.offer.schema,
+    fields: fieldGuide(config.offer.fields),
+    lineItems: config.offer.lineItems,
+    normalizers: config.offer.normalizers,
+    completion: config.offer.completion,
+    clarificationRules: config.offer.clarificationRules,
+    comparability: config.offer.comparability,
+  };
+}
+
+function modelConversation(request: ChatCompletionRequest) {
+  return request.messages
+    .filter((message) => message.role !== "system")
+    .slice(-12);
+}
+
+export function buildBrainPrompt(
+  request: ChatCompletionRequest,
+  snapshot: BrainSnapshot,
+) {
+  const shared = {
+    purpose: snapshot.purpose,
+    terminology: snapshot.config.terminology,
+    materialContext: snapshot.materialContext,
+    conversation: modelConversation(request),
+  };
+  return snapshot.purpose === "customer_intake"
+    ? {
+        ...shared,
+        jobContract: compactJobContract(snapshot.config),
+        currentState: { job: snapshot.job },
+      }
+    : {
+        ...shared,
+        confirmedJob: snapshot.job,
+        offerContract: compactOfferContract(snapshot.config),
+        negotiationContract: snapshot.config.negotiation,
+        currentState: {
+          offer: snapshot.offer,
+          negotiation: snapshot.negotiation,
+        },
+      };
+}
+
 function systemInstruction(snapshot: BrainSnapshot) {
   const role =
     snapshot.purpose === "customer_intake"
@@ -178,20 +243,7 @@ export async function generateBrainOutput(
       name: "pacta_turn",
     }),
     system: systemInstruction(snapshot),
-    prompt: JSON.stringify({
-      purpose: snapshot.purpose,
-      terminology: snapshot.config.terminology,
-      jobContract: snapshot.config.job,
-      offerContract: snapshot.config.offer,
-      negotiationContract: snapshot.config.negotiation,
-      currentState: {
-        job: snapshot.job,
-        offer: snapshot.offer,
-        negotiation: snapshot.negotiation,
-      },
-      materialContext: snapshot.materialContext,
-      conversation: request.messages,
-    }),
+    prompt: JSON.stringify(buildBrainPrompt(request, snapshot)),
     maxOutputTokens: MAX_BRAIN_OUTPUT_TOKENS,
     temperature: 0.1,
     maxRetries: 1,
