@@ -2,7 +2,6 @@ import { ElevenLabsClient, type ElevenLabs } from "@elevenlabs/elevenlabs-js";
 
 const CUSTOMER_AGENT_NAME = "Pacta Customer Intake";
 const SUPPLIER_AGENT_NAME = "Pacta Supplier Negotiator";
-const CUSTOM_LLM_SECRET_NAME = "PACTA_CUSTOM_LLM_BEARER";
 
 function required(name: string) {
   const value = process.env[name]?.trim();
@@ -41,19 +40,15 @@ function systemTools(): ElevenLabs.BuiltInToolsInput {
   };
 }
 
-function customLlm(url: string, secretId: string): ElevenLabs.CustomLlm {
+function customLlm(url: string): ElevenLabs.CustomLlm {
   return {
     url: `${url}/api/v1/chat/completions`,
     modelId: "pacta",
     apiType: "chat_completions",
-    apiKey: { secretId },
   };
 }
 
-function customerConfig(
-  url: string,
-  secretId: string,
-): ElevenLabs.ConversationalConfig {
+function customerConfig(url: string): ElevenLabs.ConversationalConfig {
   return {
     conversation: {
       textOnly: true,
@@ -67,7 +62,7 @@ function customerConfig(
       disableFirstMessageInterruptions: true,
       prompt: {
         llm: "custom-llm",
-        customLlm: customLlm(url, secretId),
+        customLlm: customLlm(url),
         builtInTools: systemTools(),
         maxTokens: 1_200,
         temperature: 0.1,
@@ -78,10 +73,7 @@ function customerConfig(
   };
 }
 
-function supplierConfig(
-  url: string,
-  secretId: string,
-): ElevenLabs.ConversationalConfig {
+function supplierConfig(url: string): ElevenLabs.ConversationalConfig {
   return {
     conversation: { textOnly: false, maxDurationSeconds: 180 },
     turn: {
@@ -98,7 +90,7 @@ function supplierConfig(
         "I need to close this request now. Thank you for your time.",
       prompt: {
         llm: "custom-llm",
-        customLlm: customLlm(url, secretId),
+        customLlm: customLlm(url),
         builtInTools: systemTools(),
         maxTokens: 1_200,
         temperature: 0.1,
@@ -148,30 +140,6 @@ async function exactAgent(client: ElevenLabsClient, name: string) {
   return matches[0] ?? null;
 }
 
-async function upsertSecret(client: ElevenLabsClient, value: string) {
-  const page = await client.conversationalAi.secrets.list({ pageSize: 100 });
-  const matches = page.secrets.filter(
-    (secret) => secret.name === CUSTOM_LLM_SECRET_NAME,
-  );
-  if (matches.length > 1)
-    throw new Error(
-      `More than one workspace secret is named ${CUSTOM_LLM_SECRET_NAME}. Refusing to guess.`,
-    );
-  if (matches[0]) {
-    await client.conversationalAi.secrets.update(matches[0].secretId, {
-      name: CUSTOM_LLM_SECRET_NAME,
-      value,
-    });
-    return matches[0].secretId;
-  }
-  return (
-    await client.conversationalAi.secrets.create({
-      name: CUSTOM_LLM_SECRET_NAME,
-      value,
-    })
-  ).secretId;
-}
-
 async function upsertAgent(
   client: ElevenLabsClient,
   input: {
@@ -204,7 +172,6 @@ async function main() {
   const apply = process.argv.includes("--apply");
   const apiKey = required("ELEVENLABS_API_KEY");
   const url = publicBaseUrl();
-  const customLlmSecret = required("ELEVENLABS_CUSTOM_LLM_SECRET");
   const client = new ElevenLabsClient({ apiKey });
   const [customer, supplier] = await Promise.all([
     exactAgent(client, CUSTOMER_AGENT_NAME),
@@ -239,16 +206,15 @@ async function main() {
     throw new Error(
       `Production liveness check failed with HTTP ${health.status}.`,
     );
-  const secretId = await upsertSecret(client, customLlmSecret);
   const settings = platformSettings(url);
   const customerResult = await upsertAgent(client, {
     name: CUSTOMER_AGENT_NAME,
-    config: customerConfig(url, secretId),
+    config: customerConfig(url),
     platformSettings: settings,
   });
   const supplierResult = await upsertAgent(client, {
     name: SUPPLIER_AGENT_NAME,
-    config: supplierConfig(url, secretId),
+    config: supplierConfig(url),
     platformSettings: settings,
   });
   console.log(

@@ -788,12 +788,19 @@ ELEVENLABS_API_KEY
 ELEVENLABS_CUSTOMER_AGENT_ID
 ELEVENLABS_SUPPLIER_AGENT_ID
 ELEVENLABS_PHONE_NUMBER_ID
-ELEVENLABS_CUSTOM_LLM_SECRET
 ELEVENLABS_WEBHOOK_SECRET
 PACTA_BRAIN_MODEL
 PACTA_DEMO_ACCESS_KEY
 PACTA_OUTBOUND_CALLS_ENABLED
 ```
+
+The Custom LLM endpoint authenticates every turn with a random, hashed,
+expiring `brain_token` scoped to the exact workspace, session, conversation,
+purpose, and negotiation. The token is delivered in ElevenLabs'
+`elevenlabs_extra_body`; an invalid or expired capability is rejected before
+model generation. Do not attach an ElevenLabs workspace API-key secret to the
+Custom LLM—the provider failed before making the HTTP request when that secret
+dependency was enabled during the production MVP proof.
 
 Conditional server-only Twilio variables—required only if M9 proves that the application itself must call Twilio REST APIs:
 

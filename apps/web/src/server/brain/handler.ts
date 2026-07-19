@@ -39,12 +39,6 @@ export type BrainHandlerDependencies = {
   }) => void;
 };
 
-function staticAuthorizationValid(request: Request) {
-  const secret = process.env.ELEVENLABS_CUSTOM_LLM_SECRET;
-  if (!secret) return process.env.NODE_ENV !== "production";
-  return request.headers.get("authorization") === `Bearer ${secret}`;
-}
-
 function hasTool(request: ChatCompletionRequest, name: string) {
   return (
     request.tools?.some((candidate) => {
@@ -119,8 +113,6 @@ export async function handleChatCompletion(
   request: Request,
   dependencies: BrainHandlerDependencies = {},
 ) {
-  if (!staticAuthorizationValid(request))
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
   let body: unknown;
   try {
     body = await request.json();
