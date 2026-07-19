@@ -11,7 +11,7 @@ import {
   Upload,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import { ensureSessionAccess } from "@/lib/supabase/session-access";
@@ -35,25 +35,50 @@ type StagedArtifact = {
   error?: string;
 };
 
-export function IntakeChat({ sessionId }: { sessionId: string }) {
+type IntakeChatProps = {
+  sessionId: string;
+  initialFile?: File | null;
+  autoStart?: boolean;
+  backHref?: string | undefined;
+};
+
+export function IntakeChat({
+  sessionId,
+  initialFile = null,
+  autoStart = false,
+  backHref,
+}: IntakeChatProps) {
   return (
     <ConversationProvider textOnly serverLocation="global">
-      <IntakeChatSession sessionId={sessionId} />
+      <IntakeChatSession
+        sessionId={sessionId}
+        initialFile={initialFile}
+        autoStart={autoStart}
+        backHref={backHref}
+      />
     </ConversationProvider>
   );
 }
 
-function IntakeChatSession({ sessionId }: { sessionId: string }) {
+function IntakeChatSession({
+  sessionId,
+  initialFile,
+  autoStart,
+  backHref,
+}: Required<Pick<IntakeChatProps, "sessionId" | "autoStart">> &
+  Pick<IntakeChatProps, "initialFile" | "backHref">) {
   const live = useSessionEvents(sessionId);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File | null>(initialFile ?? null);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [bound, setBound] = useState(false);
   const accessHeaders = useRef<Record<string, string> | null>(null);
   const turnId = useRef<string | null>(null);
   const fileInput = useRef<HTMLInputElement | null>(null);
+  const automaticConnectStarted = useRef(false);
+  const automaticFilePending = useRef(Boolean(autoStart && initialFile));
 
   const bindConversation = useCallback(
     async (providerConversationId: string) => {
@@ -111,7 +136,7 @@ function IntakeChatSession({ sessionId }: { sessionId: string }) {
     setError(null);
   }
 
-  async function connect() {
+  const connect = useCallback(async () => {
     setError(null);
     try {
       const access = await ensureSessionAccess(sessionId);
@@ -139,73 +164,107 @@ function IntakeChatSession({ sessionId }: { sessionId: string }) {
           : "Customer chat could not start.",
       );
     }
-  }
+  }, [conversation, sessionId]);
 
-  async function stageFile(input: File) {
-    const headers = accessHeaders.current;
-    if (!headers)
-      throw new Error(
-        "Connect the ElevenLabs chat before attaching a document.",
-      );
-    turnId.current ??= crypto.randomUUID();
-    const form = new FormData();
-    form.set("turnId", turnId.current);
-    form.set("file", input);
-    const response = await fetch(`/api/sessions/${sessionId}/artifacts`, {
-      method: "POST",
-      headers,
-      body: form,
-    });
-    const body = (await response.json()) as StagedArtifact;
-    if (!response.ok)
-      throw new Error(
-        body.error ?? `Private document staging failed (${response.status}).`,
-      );
-    return body;
-  }
+  const stageFile = useCallback(
+    async (input: File) => {
+      const headers = accessHeaders.current;
+      if (!headers)
+        throw new Error(
+          "Connect the ElevenLabs chat before attaching a document.",
+        );
+      turnId.current ??= crypto.randomUUID();
+      const form = new FormData();
+      form.set("turnId", turnId.current);
+      form.set("file", input);
+      const response = await fetch(`/api/sessions/${sessionId}/artifacts`, {
+        method: "POST",
+        headers,
+        body: form,
+      });
+      const body = (await response.json()) as StagedArtifact;
+      if (!response.ok)
+        throw new Error(
+          body.error ?? `Private document staging failed (${response.status}).`,
+        );
+      return body;
+    },
+    [sessionId],
+  );
+
+  const sendTurn = useCallback(
+    async (text: string, selectedFile: File | null) => {
+      setSending(true);
+      setError(null);
+      turnId.current ??= crypto.randomUUID();
+      try {
+        const visibleText =
+          text ||
+          "Please extract the configured job details from this document.";
+        if (selectedFile) {
+          const staged = await stageFile(selectedFile);
+          const uploaded = await conversation.uploadFile(selectedFile);
+          conversation.sendMultimodalMessage({
+            text: `${visibleText}\n\n${staged.marker}`,
+            fileId: uploaded.fileId,
+          });
+        } else {
+          conversation.sendUserMessage(visibleText);
+        }
+        setMessages((current) => [
+          ...current,
+          {
+            id: `user:${turnId.current}`,
+            role: "user",
+            text: visibleText,
+            ...(selectedFile ? { filename: selectedFile.name } : {}),
+          },
+        ]);
+        setMessage("");
+        setFile(null);
+        if (fileInput.current) fileInput.current.value = "";
+        turnId.current = null;
+      } catch (caught) {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "The ElevenLabs chat turn failed.",
+        );
+        setSending(false);
+      }
+    },
+    [conversation, stageFile],
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const text = message.trim();
     if ((!text && !file) || sending || !bound) return;
-    setSending(true);
-    setError(null);
-    turnId.current ??= crypto.randomUUID();
-    try {
-      const visibleText =
-        text || "Please extract the configured job details from this document.";
-      if (file) {
-        const staged = await stageFile(file);
-        const uploaded = await conversation.uploadFile(file);
-        conversation.sendMultimodalMessage({
-          text: `${visibleText}\n\n${staged.marker}`,
-          fileId: uploaded.fileId,
-        });
-      } else {
-        conversation.sendUserMessage(visibleText);
-      }
-      setMessages((current) => [
-        ...current,
-        {
-          id: `user:${turnId.current}`,
-          role: "user",
-          text: visibleText,
-          ...(file ? { filename: file.name } : {}),
-        },
-      ]);
-      setMessage("");
-      setFile(null);
-      if (fileInput.current) fileInput.current.value = "";
-      turnId.current = null;
-    } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "The ElevenLabs chat turn failed.",
-      );
-      setSending(false);
-    }
+    await sendTurn(text, file);
   }
+
+  useEffect(() => {
+    if (
+      !autoStart ||
+      automaticConnectStarted.current ||
+      conversation.status !== "disconnected"
+    )
+      return;
+    automaticConnectStarted.current = true;
+    void connect();
+  }, [autoStart, connect, conversation.status]);
+
+  useEffect(() => {
+    if (
+      !automaticFilePending.current ||
+      !initialFile ||
+      !bound ||
+      conversation.status !== "connected"
+    )
+      return;
+    automaticFilePending.current = false;
+    void sendTurn("", initialFile);
+  }, [bound, conversation.status, initialFile, sendTurn]);
 
   const job = live.view?.job ?? null;
   const connected = conversation.status === "connected" && bound;
@@ -214,7 +273,7 @@ function IntakeChatSession({ sessionId }: { sessionId: string }) {
     <main className="intake-page">
       <header className="intake-header">
         <Link
-          href={`/?session=${sessionId}`}
+          href={backHref ?? `/?session=${sessionId}`}
           aria-label="Back to negotiation room"
         >
           <ArrowLeft size={16} />

@@ -3,12 +3,14 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowRight,
+  FileUp,
   LoaderCircle,
   Plus,
   Sparkles,
   Trash2,
   UsersRound,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
@@ -331,6 +333,12 @@ function SessionLauncher() {
           <p className="launcher-disclaimer">
             Starting creates the session and begins customer intake.
           </p>
+          <div className="launcher-alternative">
+            <span>or</span>
+            <Link href="/doc-job">
+              <FileUp size={14} /> Start from a document—no customer call
+            </Link>
+          </div>
         </motion.form>
       </section>
     </main>
