@@ -137,6 +137,7 @@ describe.skipIf(!databaseUrl)("ElevenLabs multimodal customer intake", () => {
     const replay = await handleChatCompletion(makeRequest(), dependencies);
     expect(first.status).toBe(200);
     expect(replay.status).toBe(200);
+    await Promise.all([first.text(), replay.text()]);
     expect(reducedMessage).toBe("Please read this load sheet.");
 
     const artifactRows = await db

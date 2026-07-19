@@ -42,6 +42,20 @@ describe("ElevenLabs protocol", () => {
     );
   });
 
+  it("treats a provider-appended assistant buffer as the same input", () => {
+    const parsed = chatCompletionRequestSchema.parse(request);
+    const retried = chatCompletionRequestSchema.parse({
+      ...request,
+      messages: [
+        ...request.messages,
+        { role: "assistant", content: "One moment... " },
+      ],
+    });
+    expect(fingerprintChatCompletion(retried)).toBe(
+      fingerprintChatCompletion(parsed),
+    );
+  });
+
   it("streams OpenAI-compatible chunks and terminates with DONE", async () => {
     const stream = createChatCompletionSse(["Hello", " world"], {
       id: "chatcmpl_test",
@@ -77,7 +91,7 @@ describe("ElevenLabs protocol", () => {
     expect(body.endsWith("data: [DONE]\n\n")).toBe(true);
   });
 
-  it("streams a buffer before deferred model work finishes", async () => {
+  it("waits for deferred work without injecting an application filler", async () => {
     const completion = Promise.withResolvers<{
       type: "text";
       text: string;
@@ -88,20 +102,43 @@ describe("ElevenLabs protocol", () => {
       model: "pacta",
     });
     const reader = stream.getReader();
-    const first = new TextDecoder().decode((await reader.read()).value);
-    const second = new TextDecoder().decode((await reader.read()).value);
-    expect(first).toContain('"role":"assistant"');
-    expect(second).toContain('"content":"One moment... "');
+    let firstReadSettled = false;
+    const firstRead = reader.read().then((result) => {
+      firstReadSettled = true;
+      return result;
+    });
+    await Promise.resolve();
+    expect(firstReadSettled).toBe(false);
 
     completion.resolve({ type: "text", text: "Done." });
-    let remainder = "";
+    let remainder = new TextDecoder().decode((await firstRead).value);
     for (;;) {
       const next = await reader.read();
       if (next.done) break;
       remainder += new TextDecoder().decode(next.value);
     }
     expect(remainder).toContain('"content":"Done."');
+    expect(remainder).not.toContain("One moment");
     expect(remainder.endsWith("data: [DONE]\n\n")).toBe(true);
+  });
+
+  it("uses the documented content-only shape when a buffer is explicit", async () => {
+    const completion = Promise.withResolvers<{
+      type: "text";
+      text: string;
+    }>();
+    const stream = createDeferredChatCompletionSse(() => completion.promise, {
+      id: "chatcmpl_buffer",
+      created: 1,
+      model: "pacta",
+      bufferText: "Let me check that... ",
+    });
+    const reader = stream.getReader();
+    const first = new TextDecoder().decode((await reader.read()).value);
+    expect(first).toContain('"content":"Let me check that... "');
+    expect(first).not.toContain('"role":"assistant"');
+    completion.resolve({ type: "text", text: "Done." });
+    await reader.cancel();
   });
 
   it("extracts text from an ElevenLabs multimodal user turn", () => {

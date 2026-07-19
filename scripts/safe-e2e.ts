@@ -74,6 +74,7 @@ async function waitFor<T>(
 
 class TextHarness {
   private readonly agentMessages: string[];
+  private readonly roundTripMs: number[] = [];
   private disconnected = false;
 
   private constructor(
@@ -121,10 +122,19 @@ class TextHarness {
     if (this.disconnected)
       throw new Error(`${this.label} disconnected before: ${message}`);
     const before = this.agentMessages.length;
+    const startedAt = performance.now();
     this.conversation.sendUserMessage(message);
     const response = await this.waitForNextAgentMessage(before, timeoutMs);
-    console.log(`[${this.label}] ${response ?? "conversation ended"}`);
+    const elapsed = Math.round(performance.now() - startedAt);
+    this.roundTripMs.push(elapsed);
+    console.log(
+      `[${this.label}] (${elapsed} ms) ${response ?? "conversation ended"}`,
+    );
     return response;
+  }
+
+  timingSummary() {
+    return { label: this.label, roundTripMs: this.roundTripMs };
   }
 
   async close() {
@@ -143,6 +153,8 @@ class TextHarness {
     return this.agentMessages[before] ?? null;
   }
 }
+
+const activeHarnesses: TextHarness[] = [];
 
 const customerJob = `Origin city Zurich, origin country CH. Destination city Munich, destination country DE. Pickup window starts 2026-07-20T08:00:00+02:00 and ends 2026-07-20T10:00:00+02:00. Delivery window starts 2026-07-20T16:00:00+02:00 and ends 2026-07-20T18:00:00+02:00. Equipment is dry_van_53. Commodity is machine parts, weight is 10000 kg, and there are 10 handling units. Hazmat is false. Special services is an empty list. Risk criticality is standard and minimum coverage is 20000000 minor currency units. I explicitly confirm all of these exact job details.`;
 
@@ -227,6 +239,7 @@ async function main() {
         body: JSON.stringify({ providerConversationId }),
       }),
   });
+  activeHarnesses.push(customer);
   await customer.send(customerJob);
   let view = await readView();
   if (!view.job.confirmed) {
@@ -260,6 +273,7 @@ async function main() {
             },
           ),
       });
+      activeHarnesses.push(harness);
       return { ...supplier, harness };
     }),
   );
@@ -355,6 +369,7 @@ async function main() {
         suppliers: view.suppliers.length,
         awardStatus: view.awardStatus,
         sessionStatus: view.status,
+        timings: activeHarnesses.map((harness) => harness.timingSummary()),
       },
       null,
       2,
@@ -362,7 +377,8 @@ async function main() {
   );
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
+  await Promise.all(activeHarnesses.map((harness) => harness.close()));
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
 });

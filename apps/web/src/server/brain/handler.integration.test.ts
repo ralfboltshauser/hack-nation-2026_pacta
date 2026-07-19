@@ -64,38 +64,62 @@ describe.skipIf(!databaseUrl)("Custom LLM handler", () => {
         purpose: "customer_intake",
       },
     };
-    const generate = async () => ({
-      spokenResponse: "Thanks. Which country is the pickup in?",
-      reduction: {
-        jobObservations: [
-          { path: "/origin/city", value: "Zurich", evidenceQuote: "Zurich" },
-        ],
-        offerObservations: [],
-        signals: {
-          jobConfirmed: false,
-          jobCorrectionRequested: false,
-          supplierDeclined: false,
-          callbackRequested: false,
-          offerIsFinal: false,
-          selectedOfferRevisionId: null,
-          supplierAcceptedExactTerms: false,
-          customerDeclinedAll: false,
+    const generationStarted = Promise.withResolvers<void>();
+    const releaseGeneration = Promise.withResolvers<void>();
+    let generationCount = 0;
+    const generate = async () => {
+      generationCount += 1;
+      generationStarted.resolve();
+      await releaseGeneration.promise;
+      return {
+        spokenResponse: "Thanks. Which country is the pickup in?",
+        reduction: {
+          jobObservations: [
+            {
+              path: "/origin/city",
+              value: "Zurich",
+              evidenceQuote: "Zurich",
+            },
+          ],
+          offerObservations: [],
+          signals: {
+            jobConfirmed: false,
+            jobCorrectionRequested: false,
+            supplierDeclined: false,
+            callbackRequested: false,
+            offerIsFinal: false,
+            selectedOfferRevisionId: null,
+            supplierAcceptedExactTerms: false,
+            customerDeclinedAll: false,
+          },
         },
-      },
-    });
-    const makeRequest = () =>
+      };
+    };
+    const makeRequest = (messages = body.messages) =>
       new Request("http://localhost/api/v1/chat/completions", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, messages }),
       });
 
     const first = await handleChatCompletion(makeRequest(), { generate });
-    const retry = await handleChatCompletion(makeRequest(), { generate });
+    const firstText = first.text();
+    await generationStarted.promise;
+    const retry = await handleChatCompletion(
+      makeRequest([
+        ...body.messages,
+        { role: "assistant", content: "One moment... " },
+      ]),
+      { generate },
+    );
+    const retryText = retry.text();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(generationCount).toBe(1);
+    releaseGeneration.resolve();
     expect(first.status).toBe(200);
     expect(retry.status).toBe(200);
-    expect(await first.text()).toContain("Which country");
-    expect(await retry.text()).toContain("Which country");
+    await expect(firstText).resolves.toContain("Which country");
+    await expect(retryText).resolves.toContain("Which country");
 
     const revisions = await db
       .select()
@@ -116,6 +140,9 @@ describe.skipIf(!databaseUrl)("Custom LLM handler", () => {
       .where(eq(sessionEvents.sessionId, graph.session.id));
     expect(revisions).toHaveLength(1);
     expect(executions).toHaveLength(1);
+    expect(executions[0]?.canonicalizationVersion).toBe(
+      "elevenlabs-chat-completions.v2",
+    );
     expect(events).toHaveLength(2);
     expect(events.map((event) => event.eventType)).toEqual(
       expect.arrayContaining([

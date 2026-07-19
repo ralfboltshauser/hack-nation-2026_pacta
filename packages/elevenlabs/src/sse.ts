@@ -159,22 +159,11 @@ export function createDeferredChatCompletionSse(
   const id = options?.id ?? `chatcmpl_${crypto.randomUUID()}`;
   const model = options?.model ?? "pacta";
   const created = options?.created ?? Math.floor(Date.now() / 1000);
-  const bufferText = options?.bufferText ?? "One moment... ";
+  const bufferText = options?.bufferText ?? "";
   const toolCallId = options?.toolCallId ?? `call_${crypto.randomUUID()}`;
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
-      controller.enqueue(
-        event({
-          id,
-          object: "chat.completion.chunk",
-          created,
-          model,
-          choices: [
-            { index: 0, delta: { role: "assistant" }, finish_reason: null },
-          ],
-        }),
-      );
       if (bufferText) {
         controller.enqueue(
           event({
@@ -260,14 +249,11 @@ export function createDeferredChatCompletionSse(
           );
         }
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-      } catch (error) {
+      } catch {
         controller.enqueue(
           event({
             error: {
-              message:
-                error instanceof Error
-                  ? error.message
-                  : "The response stream failed.",
+              message: "The response stream failed.",
               type: "server_error",
             },
           }),

@@ -108,6 +108,26 @@ function completionResult(
   return { type: "text" as const, text };
 }
 
+async function beginBrainTurnWithWait(
+  db: Parameters<typeof beginBrainTurn>[0],
+  request: ChatCompletionRequest,
+  fingerprint: string,
+) {
+  const deadline = Date.now() + 15_000;
+  for (;;) {
+    try {
+      return await beginBrainTurn(db, request, fingerprint);
+    } catch (error) {
+      if (
+        !(error instanceof BrainTurnInProgressError) ||
+        Date.now() >= deadline
+      )
+        throw error;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  }
+}
+
 export async function handleChatCompletion(
   request: Request,
   dependencies: BrainHandlerDependencies = {},
@@ -135,7 +155,7 @@ export async function handleChatCompletion(
         let begun: Awaited<ReturnType<typeof beginBrainTurn>> | undefined;
         try {
           const fingerprint = fingerprintChatCompletion(parsed.data);
-          begun = await beginBrainTurn(db, parsed.data, fingerprint);
+          begun = await beginBrainTurnWithWait(db, parsed.data, fingerprint);
           const artifactId = artifactIdFromMessages(parsed.data.messages);
           const sourceArtifact =
             !begun.replayText && artifactId

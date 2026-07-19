@@ -4,6 +4,30 @@ import type { UseCaseConfig } from "@pacta/use-case-config";
 import { generateText, Output, type ModelMessage } from "ai";
 import { z } from "zod";
 
+const DEFAULT_BRAIN_MODEL = "google/gemini-2.5-flash-lite";
+
+function brainModelSettings() {
+  const model =
+    process.env.PACTA_BRAIN_MODEL ??
+    process.env.REDUCER_MODEL ??
+    DEFAULT_BRAIN_MODEL;
+  if (model.startsWith("google/gemini-2.5")) {
+    return {
+      model,
+      providerOptions: {
+        google: { thinkingConfig: { thinkingBudget: 0 } },
+      },
+    };
+  }
+  if (model.startsWith("openai/")) {
+    return {
+      model,
+      providerOptions: { openai: { reasoningEffort: "minimal" } },
+    };
+  }
+  return { model };
+}
+
 export const brainOutputSchema = z
   .object({
     spokenResponse: z.string().min(1),
@@ -124,10 +148,7 @@ export async function generateBrainOutput(
   }
 
   const result = await generateText({
-    model:
-      process.env.PACTA_BRAIN_MODEL ??
-      process.env.REDUCER_MODEL ??
-      "openai/gpt-5-mini",
+    ...brainModelSettings(),
     output: Output.object({
       schema: brainModelOutputSchema,
       name: "pacta_turn",
@@ -210,10 +231,7 @@ export async function generateIntakeBrainOutput(
     { role: "user", content },
   ];
   const result = await generateText({
-    model:
-      process.env.PACTA_BRAIN_MODEL ??
-      process.env.REDUCER_MODEL ??
-      "openai/gpt-5-mini",
+    ...brainModelSettings(),
     output: Output.object({
       schema: brainModelOutputSchema,
       name: "pacta_intake_turn",

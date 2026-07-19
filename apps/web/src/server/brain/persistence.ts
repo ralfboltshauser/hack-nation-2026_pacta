@@ -34,6 +34,7 @@ import {
   useCaseConfigVersions,
   type PactaDatabase,
 } from "@pacta/db";
+import { CANONICALIZATION_VERSION } from "@pacta/elevenlabs";
 import type { ChatCompletionRequest, PactaExtraBody } from "@pacta/elevenlabs";
 import {
   useCaseConfigSchema,
@@ -141,7 +142,7 @@ export async function beginBrainTurn(
       messages: request.messages,
       inputFingerprint,
       provider: "elevenlabs",
-      canonicalizationVersion: "elevenlabs-chat-completions.v1",
+      canonicalizationVersion: CANONICALIZATION_VERSION,
     });
   });
 }
@@ -497,6 +498,14 @@ export async function completeBrainTurn(
 ) {
   return db.transaction(async (rawTx) => {
     const tx = rawTx as unknown as PactaDatabase;
+    // Every completion can append a session event and inject context into peer
+    // conversations. Lock the shared session before any per-turn aggregates so
+    // parallel supplier commits always acquire locks in the same order.
+    await tx
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(eq(sessions.id, begun.sessionId))
+      .for("update");
     const [execution] = await tx
       .select()
       .from(conversationTurnExecutions)
