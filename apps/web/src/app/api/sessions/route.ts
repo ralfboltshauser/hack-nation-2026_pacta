@@ -7,7 +7,10 @@ import {
 import { getBuiltinUseCase } from "@pacta/use-case-config";
 import { z } from "zod";
 
-import { runSessionAction } from "@/server/orchestration/calls";
+import {
+  outboundCallsEnabled,
+  runSessionAction,
+} from "@/server/orchestration/calls";
 
 const partyInput = z
   .object({
@@ -40,6 +43,14 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 export async function POST(request: Request) {
+  if (!outboundCallsEnabled())
+    return Response.json(
+      {
+        error:
+          "Outbound phone calls are temporarily unavailable. No session was created.",
+      },
+      { status: 503 },
+    );
   const parsed = requestSchema.safeParse(
     await request.json().catch(() => null),
   );
