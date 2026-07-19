@@ -2,6 +2,7 @@ import {
   chatCompletionHeaders,
   chatCompletionRequestSchema,
   createDeferredChatCompletionSse,
+  ELEVENLABS_BUFFER_TEXT,
   extractContentText,
   extractLastUserText,
   fingerprintChatCompletion,
@@ -113,7 +114,7 @@ async function beginBrainTurnWithWait(
   request: ChatCompletionRequest,
   fingerprint: string,
 ) {
-  const deadline = Date.now() + 15_000;
+  const deadline = Date.now() + 30_000;
   for (;;) {
     try {
       return await beginBrainTurn(db, request, fingerprint);
@@ -252,7 +253,7 @@ export async function handleChatCompletion(
           await client.end();
         }
       },
-      { model: parsed.data.model },
+      { bufferText: ELEVENLABS_BUFFER_TEXT, model: parsed.data.model },
     ),
     { headers: chatCompletionHeaders() },
   );

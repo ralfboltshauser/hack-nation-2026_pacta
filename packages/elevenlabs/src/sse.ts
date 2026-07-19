@@ -1,5 +1,7 @@
 const encoder = new TextEncoder();
 
+export const ELEVENLABS_BUFFER_TEXT = "Let me check that... ";
+
 export type TextSource = AsyncIterable<string> | Iterable<string>;
 
 export type ChatCompletionToolCall = {

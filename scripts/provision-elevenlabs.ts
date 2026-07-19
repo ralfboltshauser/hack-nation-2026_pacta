@@ -81,12 +81,7 @@ function supplierConfig(url: string): ElevenLabs.ConversationalConfig {
       turnTimeout: 4,
       silenceEndCallTimeout: 150,
       turnEagerness: "eager",
-      softTimeoutConfig: {
-        timeoutSeconds: 3,
-        message: "Let me check that...",
-        useLlmGeneratedMessage: false,
-        maxSoftTimeoutsPerGeneration: 1,
-      },
+      softTimeoutConfig: { timeoutSeconds: -1 },
     },
     agent: {
       language: "en",

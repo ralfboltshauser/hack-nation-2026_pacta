@@ -7,6 +7,7 @@ import {
   createChatCompletionSse,
   createChatCompletionToolCallSse,
   createDeferredChatCompletionSse,
+  ELEVENLABS_BUFFER_TEXT,
   extractLastUserText,
   fingerprintChatCompletion,
   verifyPostCallWebhook,
@@ -131,11 +132,11 @@ describe("ElevenLabs protocol", () => {
       id: "chatcmpl_buffer",
       created: 1,
       model: "pacta",
-      bufferText: "Let me check that... ",
+      bufferText: ELEVENLABS_BUFFER_TEXT,
     });
     const reader = stream.getReader();
     const first = new TextDecoder().decode((await reader.read()).value);
-    expect(first).toContain('"content":"Let me check that... "');
+    expect(first).toContain(`"content":"${ELEVENLABS_BUFFER_TEXT}"`);
     expect(first).not.toContain('"role":"assistant"');
     completion.resolve({ type: "text", text: "Done." });
     await reader.cancel();
