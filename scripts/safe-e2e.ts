@@ -13,6 +13,7 @@ type SessionView = {
     offerStatus: string;
     selected: boolean;
     conversationStatus: string;
+    negotiationOutcome: string | null;
   }>;
   selectedOfferRevisionId: string | null;
   awardStatus: string | null;
@@ -300,6 +301,7 @@ const supplierQuotes = [
 ].map((quote) => ({
   ...quote,
   message: `My all-in price is ${quote.spokenPrice} Swiss francs.`,
+  clarificationMessage: `Yes. ${quote.spokenPrice} Swiss francs is my complete all-in total. It includes fuel, tolls, and accessorials, with no additional charges.`,
 }));
 
 function assertRuntimeToolGate(input: {
@@ -342,6 +344,10 @@ function assertRuntimeToolGate(input: {
         supplier === input.selected
           ? { minimum: 1, maximum: 1 }
           : { minimum: 0, maximum: 0 },
+      record_supplier_outcome:
+        supplier === input.selected
+          ? { minimum: 0, maximum: 0 }
+          : { minimum: 1, maximum: 1 },
     });
   }
   console.log("Native ElevenLabs milestone tool gate passed.");
@@ -468,6 +474,30 @@ async function main() {
       return supplier.harness.send(quote.message);
     }),
   );
+  view = await readView();
+  const suppliersNeedingClarification = suppliers.filter((supplier) => {
+    const current = view.suppliers.find(
+      (candidate) => candidate.conversationId === supplier.conversationId,
+    );
+    return current?.offerStatus !== "comparable";
+  });
+  if (suppliersNeedingClarification.length) {
+    console.log(
+      `Answering one explicit offer clarification for: ${suppliersNeedingClarification
+        .map((supplier) => supplier.displayName)
+        .join(", ")}.`,
+    );
+    await Promise.all(
+      suppliersNeedingClarification.map((supplier) => {
+        const quote = supplierQuotes.find(
+          (candidate) => candidate.name === supplier.displayName,
+        );
+        if (!quote)
+          throw new Error(`No quote fixture for ${supplier.displayName}.`);
+        return supplier.harness.send(quote.clarificationMessage);
+      }),
+    );
+  }
   view = await waitFor(
     "three comparable offers",
     readView,
@@ -524,6 +554,20 @@ async function main() {
         supplier.harness.send("Has the customer made a final decision?"),
       ),
   ]);
+  view = await waitFor(
+    "non-selected supplier closeout",
+    readView,
+    (state) =>
+      state.suppliers
+        .filter(
+          (supplier) => supplier.conversationId !== selected.conversationId,
+        )
+        .every(
+          (supplier) => supplier.negotiationOutcome === "not_selected_notified",
+        ),
+    30_000,
+  );
+  console.log("Both non-selected supplier outcomes are stored.");
   await Promise.all([
     customer.close(),
     ...suppliers.map(({ harness }) => harness.close()),
