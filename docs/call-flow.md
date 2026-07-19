@@ -19,6 +19,12 @@ The flow is use-case agnostic. “Job,” “supplier,” and “offer” are co
 
 The durable universal noun is **conversation**. A phone call is a `voice_pstn` conversation; customer chat is a `text_chat` conversation. The UI may say “call,” but canonical events use `conversation.*`.
 
+### Safe no-phone verification
+
+Before any friend number is connected, the same private supplier ElevenLabs agent can be started through a signed WebSocket URL with its permitted `text_only` conversation override. The internal supplier-chat endpoints require both session membership and the demo access key, and they return HTTP 409 whenever `PACTA_OUTBOUND_CALLS_ENABLED` is `true`. They create no Twilio or ElevenLabs outbound-call request.
+
+This is not a mock negotiation: the safe harness uses the production supplier agent, Custom LLM endpoint, scoped brain token, reducer, immutable revisions, context injections, post-call webhook, and session closeout. Only speech recognition, synthesis, and PSTN transport are replaced by typed supplier messages. The real-call milestone remains a separate explicit-approval gate.
+
 ## Configuration boundary
 
 | Fixed engine mechanics                  | Pinned use-case configuration                     | Per-session input                  |

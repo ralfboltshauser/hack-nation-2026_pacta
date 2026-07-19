@@ -20,12 +20,18 @@ importers:
 
   .:
     devDependencies:
+      '@elevenlabs/client':
+        specifier: 1.15.0
+        version: 1.15.0(@types/dom-mediacapture-record@1.0.22)
       '@elevenlabs/elevenlabs-js':
         specifier: 2.58.0
         version: 2.58.0
       '@eslint/js':
         specifier: 9.39.5
         version: 9.39.5
+      '@supabase/supabase-js':
+        specifier: 2.110.7
+        version: 2.110.7
       '@types/node':
         specifier: 26.1.1
         version: 26.1.1

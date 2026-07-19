@@ -28,7 +28,7 @@ This is an implemented MVP, not only an architecture blueprint. It includes:
 - native ElevenLabs supplier call origination, post-call HMAC reconciliation, and a fail-closed telephony switch; and
 - automated config, reducer, migration, integration, build, and browser tests.
 
-The remaining provider proofs are deployment, a real ElevenLabs text/file conversation against the deployed handler, safe text simulations of the supplier agents, and—only after explicit approval—one then three real supplier calls. `PACTA_OUTBOUND_CALLS_ENABLED` is `false` by default.
+Production is deployed at `https://pacta.openexp.dev` with two private ElevenLabs agents and the signed post-call webhook. A provider-faithful safe E2E harness runs the supplier agent in text mode only while telephony is disarmed. The remaining provider proofs are the deployed customer text/file turn, the complete safe customer-plus-three-supplier run, and—only after explicit approval—one then three real supplier calls. `PACTA_OUTBOUND_CALLS_ENABLED` is `false` by default.
 
 ## Local verification
 

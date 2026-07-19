@@ -113,7 +113,10 @@ function platformSettings(
   url: string,
 ): ElevenLabs.AgentPlatformSettingsRequestModel {
   return {
-    overrides: { customLlmExtraBody: true },
+    overrides: {
+      customLlmExtraBody: true,
+      conversationConfigOverride: { conversation: { textOnly: true } },
+    },
     auth: {
       enableAuth: true,
       allowlist: [{ hostname: new URL(url).hostname }],

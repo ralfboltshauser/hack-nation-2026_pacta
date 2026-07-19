@@ -463,6 +463,32 @@ function numberAt(document: Record<string, unknown>, path: string[]) {
   return typeof current === "number" ? current : null;
 }
 
+async function loadComparableOffers(db: PactaDatabase, sessionId: string) {
+  const rows = await db
+    .select({
+      offerRevisionId: offerRevisions.id,
+      negotiationId: negotiations.id,
+      supplierId: parties.id,
+      supplierName: parties.displayName,
+      data: offerRevisions.data,
+    })
+    .from(offerRevisions)
+    .innerJoin(offers, eq(offers.currentRevisionId, offerRevisions.id))
+    .innerJoin(negotiations, eq(negotiations.id, offers.negotiationId))
+    .innerJoin(
+      sessionSuppliers,
+      eq(sessionSuppliers.id, negotiations.sessionSupplierId),
+    )
+    .innerJoin(parties, eq(parties.id, sessionSuppliers.supplierPartyId))
+    .where(
+      and(
+        eq(sessionSuppliers.sessionId, sessionId),
+        eq(offerRevisions.comparabilityStatus, "comparable"),
+      ),
+    );
+  return rows.map((row) => ({ ...row, data: jsonRecord(row.data) }));
+}
+
 export async function completeBrainTurn(
   db: PactaDatabase,
   begun: BegunBrainTurn,
@@ -539,15 +565,16 @@ export async function completeBrainTurn(
         .select({
           id: conversations.id,
           negotiationId: conversations.negotiationId,
+          purposeKey: conversations.purposeKey,
         })
         .from(conversations)
         .where(eq(conversations.sessionId, begun.sessionId));
-      const payload = {
-        factKey: "verified_all_in_price",
-        amountMinor: eventPayload.totalMinor,
-        instruction:
-          "A verified anonymous comparable offer is available. Use it only if the configured negotiation phase allows this lever.",
-      };
+      const comparable = await loadComparableOffers(tx, begun.sessionId);
+      const comparison = compareOffers(
+        begun.snapshot.config,
+        begun.snapshot.job,
+        comparable,
+      );
       const values = targets
         .filter((target) => target.id !== begun.conversationId)
         .map((target) => ({
@@ -557,7 +584,27 @@ export async function completeBrainTurn(
           targetNegotiationId: target.negotiationId,
           sourceEventId: event.id,
           channel: "custom_llm_next_turn",
-          payload,
+          payload:
+            target.purposeKey === "customer_intake"
+              ? {
+                  factKey: "comparable_offer_snapshot",
+                  offers: comparable.map((offer) => ({
+                    offerRevisionId: offer.offerRevisionId,
+                    negotiationId: offer.negotiationId,
+                    supplierId: offer.supplierId,
+                    supplierName: offer.supplierName,
+                    terms: offer.data,
+                  })),
+                  comparison,
+                  instruction:
+                    "Present the configured recommendation and verified offer terms. The customer alone chooses; record the exact offerRevisionId only after an explicit selection.",
+                }
+              : {
+                  factKey: "verified_all_in_price",
+                  amountMinor: eventPayload.totalMinor,
+                  instruction:
+                    "A verified anonymous comparable offer is available. Use it only if the configured negotiation phase allows this lever.",
+                },
           status: "pending",
         }));
       if (values.length) await tx.insert(contextInjections).values(values);
@@ -767,28 +814,7 @@ async function applyCustomerDecision(
   begun: BegunBrainTurn,
   reduction: TurnReduction,
 ) {
-  const comparable = await db
-    .select({
-      offerRevisionId: offerRevisions.id,
-      negotiationId: negotiations.id,
-      supplierId: parties.id,
-      supplierName: parties.displayName,
-      data: offerRevisions.data,
-    })
-    .from(offerRevisions)
-    .innerJoin(offers, eq(offers.currentRevisionId, offerRevisions.id))
-    .innerJoin(negotiations, eq(negotiations.id, offers.negotiationId))
-    .innerJoin(
-      sessionSuppliers,
-      eq(sessionSuppliers.id, negotiations.sessionSupplierId),
-    )
-    .innerJoin(parties, eq(parties.id, sessionSuppliers.supplierPartyId))
-    .where(
-      and(
-        eq(sessionSuppliers.sessionId, begun.sessionId),
-        eq(offerRevisions.comparabilityStatus, "comparable"),
-      ),
-    );
+  const comparable = await loadComparableOffers(db, begun.sessionId);
   if (!comparable.length)
     throw new Error(
       "A customer decision requires at least one comparable offer.",
@@ -796,7 +822,7 @@ async function applyCustomerDecision(
   const comparison = compareOffers(
     begun.snapshot.config,
     begun.snapshot.job,
-    comparable.map((row) => ({ ...row, data: jsonRecord(row.data) })),
+    comparable,
   );
   const selectedId = reduction.signals.selectedOfferRevisionId;
   const selected = selectedId

@@ -15,12 +15,16 @@ This record contains sanitized verification evidence only. No credentials, phone
 - Customer selection creates only a pending commitment; supplier acceptance creates the confirmed award.
 - A confirmed supplier acceptance emits an ElevenLabs `end_call` system-tool response, and the exact provider retry remains terminal without regenerating state.
 - Outbound calls fail closed unless `PACTA_OUTBOUND_CALLS_ENABLED` is exactly `true`.
-- The ElevenLabs provisioning command completed a read-only dry run and resolved both production agent operations as `create`.
+- The public GitHub repository was pushed and GitHub CI passed on `main` after fixing the workspace-local Playwright invocation.
+- The Vercel project `pacta-negotiator` built with Node 24 from the `apps/web` monorepo root. TLS and `/api/health/live` pass at `https://pacta.openexp.dev`; database readiness passes and telephony reports `disarmed`.
+- Two private ElevenLabs production agents were created against the production Custom LLM endpoint. The signed workspace post-call webhook was created and its one-time HMAC secret was delivered directly to Vercel Production.
+- Exactly one existing outbound-capable ElevenLabs phone-number resource was inventoried and configured, but no outbound-call endpoint was invoked.
+- A supplier text-only override and guarded safe E2E harness were added so the real provider agent can be tested without PSTN; both endpoints fail closed when phone calls are armed.
 
 ## Hosted state
 
 - Supabase was provisioned manually after the Stripe Projects provider failed. The failed Stripe resource must not be retried.
-- Vercel project creation, environment sync, custom domain, ElevenLabs agent creation, workspace webhook creation, and deployed provider proofs remain pending at this checkpoint.
+- Vercel production, custom domain, Production environment variables, ElevenLabs agents, and the workspace webhook are provisioned. Preview-scope parity and the complete deployed provider run remain pending at this checkpoint.
 - No outbound phone call was made.
 
 ## Explicit uncertainties

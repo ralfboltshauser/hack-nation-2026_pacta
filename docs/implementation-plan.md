@@ -13,13 +13,13 @@ This document records both the gated plan and current execution state. Infrastru
 Verified on 2026-07-19:
 
 - The Node 24/pnpm monorepo, Next.js application, shared packages, CI, mascot-centered UI, and browser test are implemented. The desktop currently runs Node 26, which produces an expected engine warning; CI and Vercel use Node 24.
-- The public GitHub repository `ralfboltshauser/hack-nation-2026_pacta` exists and is configured as `origin`; the initial push remains pending at this checkpoint.
+- The public GitHub repository `ralfboltshauser/hack-nation-2026_pacta` is pushed on `main`; GitHub CI passes on the protected implementation commit.
 - The manually created Supabase project is healthy. Seven migrations apply from a blank PostgreSQL 17 database and on the hosted project. The private bucket, anonymous Auth, membership-scoped RLS, and Realtime access were functionally tested.
 - Stripe Projects is initialized locally for inventory, but its Supabase resource creation failed at the provider boundary. The manual Supabase project is the accepted fallback; do not retry the broken resource.
-- Vercel authentication and the `openexp.dev` zone are available. The new production project/domain and environment sync remain pending. Do not mutate the unrelated `pacta-character` project.
-- ElevenLabs read-only API checks, signed-chat SDK integration, native outbound client, Custom LLM contracts, system-tool SSE, HMAC webhook reconciliation, and an idempotent agent-provisioning dry run pass. Production agents have not yet been created.
+- The separate Vercel project `pacta-negotiator` uses `apps/web` as its monorepo root and is healthy at `https://pacta.openexp.dev`; the unrelated `pacta-character` project was not mutated. Production Supabase, model, security, and disarmed telephony variables are present.
+- The private ElevenLabs customer and supplier agents point to the production Custom LLM endpoint. The workspace post-call webhook is HMAC-signed and its secret is stored only in Vercel. The supplier agent permits a signed text-only override for the no-phone harness.
 - Outbound telephony is fail-closed unless `PACTA_OUTBOUND_CALLS_ENABLED` is exactly `true`. It remains `false`; no friend phone has been called.
-- A clean local schema rebuild, 27 automated tests, lint, typecheck, production build, and Playwright UI test pass. Exact deployed ElevenLabs file forwarding and real supplier-call behavior still require provider proof.
+- A clean local schema rebuild, 27 automated tests, lint, typecheck, production build, Playwright UI test, GitHub CI, production TLS/liveness, and production database readiness pass. The complete deployed safe harness, exact deployed ElevenLabs file bridge, and real supplier-call behavior still require provider proof.
 
 ## Target repository shape
 

@@ -18,11 +18,14 @@
     "db:generate": "pnpm --filter @pacta/db generate",
     "db:migrate": "pnpm --filter @pacta/db migrate",
     "config:check": "pnpm --filter @pacta/use-case-config check",
+    "e2e:safe": "tsx scripts/safe-e2e.ts",
     "elevenlabs:provision": "tsx scripts/provision-elevenlabs.ts"
   },
   "devDependencies": {
+    "@elevenlabs/client": "1.15.0",
     "@elevenlabs/elevenlabs-js": "2.58.0",
     "@eslint/js": "9.39.5",
+    "@supabase/supabase-js": "2.110.7",
     "@types/node": "26.1.1",
     "eslint": "9.39.5",
     "prettier": "3.9.5",

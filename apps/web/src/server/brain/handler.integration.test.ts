@@ -354,26 +354,49 @@ describe.skipIf(!databaseUrl)("Custom LLM handler", () => {
         }),
       },
     );
+    let customerSnapshot: BrainSnapshot | undefined;
     const customerSelection = await handleChatCompletion(
       customerSelectionRequest,
       {
-        generate: async () => ({
-          spokenResponse:
-            "Understood. I will ask Carrier one to confirm the exact terms.",
-          reduction: {
-            jobObservations: [],
-            offerObservations: [],
-            signals: {
-              ...flags,
-              offerIsFinal: false,
-              selectedOfferRevisionId: firstOfferRevision!.id,
+        generate: async (_request, snapshot) => {
+          customerSnapshot = snapshot;
+          return {
+            spokenResponse:
+              "Understood. I will ask Carrier one to confirm the exact terms.",
+            reduction: {
+              jobObservations: [],
+              offerObservations: [],
+              signals: {
+                ...flags,
+                offerIsFinal: false,
+                selectedOfferRevisionId: firstOfferRevision!.id,
+              },
             },
-          },
-        }),
+          };
+        },
       },
     );
     expect(customerSelection.status).toBe(200);
     await customerSelection.text();
+    expect(customerSnapshot?.materialContext).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          eventType: "injected.offer.revision_created",
+          payload: expect.objectContaining({
+            factKey: "comparable_offer_snapshot",
+            offers: expect.arrayContaining([
+              expect.objectContaining({
+                offerRevisionId: firstOfferRevision!.id,
+                supplierName: "Carrier one",
+              }),
+            ]),
+            comparison: expect.objectContaining({
+              recommendedOfferRevisionId: firstOfferRevision!.id,
+            }),
+          }),
+        }),
+      ]),
+    );
 
     const supplierAcceptance = await handleChatCompletion(
       requestFor(0, "Yes, I accept those exact terms and commit."),
