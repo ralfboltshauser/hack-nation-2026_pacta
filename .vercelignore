@@ -1,0 +1,49 @@
+# Local dependencies and build caches
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+.turbo/
+**/.turbo/
+dist/
+**/dist/
+build/
+**/build/
+coverage/
+**/coverage/
+.cache/
+**/.cache/
+*.tsbuildinfo
+
+# Local tools that are not part of the Pacta runtime
+.smithers/
+.projects/
+.supabase/
+.stripe/
+.vercel/
+
+# Secrets and machine-specific configuration
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Test and provider artifacts
+playwright-report/
+**/playwright-report/
+test-results/
+**/test-results/
+recordings/
+provider-payloads/
+docs/milestones/evidence/private/
+experiments/**/bin/
+
+# Local logs and editor/OS artifacts
+*.log
+.DS_Store
+*.blend1
+__pycache__/
+**/__pycache__/
+*.py[cod]
