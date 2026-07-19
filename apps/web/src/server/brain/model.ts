@@ -23,7 +23,7 @@ function brainModelSettings() {
   if (model.startsWith("openai/")) {
     return {
       model,
-      providerOptions: { openai: { reasoningEffort: "minimal" } },
+      providerOptions: { openai: { reasoningEffort: "none" } },
     };
   }
   return { model };
