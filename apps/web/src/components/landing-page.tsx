@@ -27,7 +27,7 @@ import Link from "next/link";
 import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
-  type RefObject,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -42,7 +42,7 @@ const marketSteps = [
   {
     number: "01",
     title: "Confirm the request",
-    detail: "One immutable brief becomes the shared contract.",
+    detail: "One immutable brief becomes the confirmed source of truth.",
   },
   {
     number: "02",
@@ -93,15 +93,10 @@ function Reveal({
   );
 }
 
-function MarketStory({
-  scrollContainer,
-}: {
-  scrollContainer: RefObject<HTMLDivElement | null>;
-}) {
+function MarketStory() {
   const sectionRef = useRef<HTMLElement>(null);
   const [activeStep, setActiveStep] = useState(0);
   const { scrollYProgress } = useScroll({
-    container: scrollContainer,
     target: sectionRef,
     offset: ["start start", "end end"],
   });
@@ -223,16 +218,16 @@ function MarketStory({
       <div className={styles.marketSticky}>
         <div className={styles.marketCopy}>
           <p className={styles.sectionKicker}>
-            One contract. Many conversations.
+            One confirmed brief. Many conversations.
           </p>
           <h2>
             Pacta opens the market
             <br />
             <em>in parallel.</em>
           </h2>
-          <div className={styles.marketStepList}>
+          <ol className={styles.marketStepList}>
             {marketSteps.map((step, index) => (
-              <div
+              <li
                 className={`${styles.marketStep} ${
                   index === activeStep ? styles.marketStepActive : ""
                 }`}
@@ -243,16 +238,19 @@ function MarketStory({
                   <strong>{step.title}</strong>
                   <p>{step.detail}</p>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
 
         <div
           className={styles.marketVisual}
           role="img"
-          aria-label="A confirmed request branching through Pacta into three independent supplier conversations and returning as comparable offers"
+          aria-label="A confirmed request branching through Pacta into three independent supplier conversations and returning as comparable offers. This is an illustrative product flow."
         >
+          <span className={styles.illustrativeLabel}>
+            Illustrative product flow
+          </span>
           <div className={styles.marketGrid} aria-hidden="true" />
           <motion.div
             className={styles.marketHalo}
@@ -365,8 +363,8 @@ function MarketStory({
 }
 
 export function LandingPage() {
-  const pageRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
+  const [mountMascot, setMountMascot] = useState(false);
   const pointerX = useMotionValue(-120);
   const pointerY = useMotionValue(-120);
   const cursorX = useSpring(pointerX, {
@@ -382,7 +380,7 @@ export function LandingPage() {
   const cursorTransform = useMotionTemplate`translate3d(${cursorX}px, ${cursorY}px, 0)`;
   const [cursorVisible, setCursorVisible] = useState(false);
   const [cursorActive, setCursorActive] = useState(false);
-  const { scrollYProgress } = useScroll({ container: pageRef });
+  const { scrollYProgress } = useScroll();
   const smoothProgress = useSpring(scrollYProgress, {
     stiffness: 190,
     damping: 32,
@@ -392,6 +390,14 @@ export function LandingPage() {
     smoothProgress,
     (value) => `scaleX(${value})`,
   );
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    const idleId = window.requestIdleCallback(() => setMountMascot(true), {
+      timeout: 900,
+    });
+    return () => window.cancelIdleCallback(idleId);
+  }, [reduceMotion]);
 
   const trackPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "touch" || reduceMotion) return;
@@ -406,7 +412,6 @@ export function LandingPage() {
     <div
       className={styles.page}
       data-testid="landing-page"
-      ref={pageRef}
       onPointerMove={trackPointer}
       onPointerEnter={() => setCursorVisible(true)}
       onPointerLeave={() => setCursorVisible(false)}
@@ -436,6 +441,9 @@ export function LandingPage() {
           <Link href="#trust">Trust model</Link>
           <Link href="#markets">Markets</Link>
         </div>
+        <Link className={styles.mobileExplore} href="#market">
+          Explore
+        </Link>
         <Link
           className={styles.navCta}
           href="/negotiate"
@@ -540,7 +548,19 @@ export function LandingPage() {
             <span className={styles.heroOrbit} aria-hidden="true" />
             <span className={styles.heroOrbitInner} aria-hidden="true" />
             <span className={styles.heroStatus}>Ready</span>
-            <MascotStage className={styles.heroMascotStage} />
+            {mountMascot && !reduceMotion ? (
+              <MascotStage className={styles.heroMascotStage} />
+            ) : (
+              <Image
+                className={styles.heroDeferredPoster}
+                src={mascotPoster}
+                alt=""
+                fill
+                fetchPriority="high"
+                loading="eager"
+                sizes="(max-width: 700px) 86vw, 560px"
+              />
+            )}
             <div className={styles.heroMascotHint}>
               <Sparkles size={12} /> I follow your lead. Try me.
             </div>
@@ -597,7 +617,7 @@ export function LandingPage() {
           </Reveal>
         </section>
 
-        <MarketStory scrollContainer={pageRef} />
+        <MarketStory />
 
         <section className={styles.trustSection} id="trust">
           <div className={styles.trustIntro}>
@@ -619,8 +639,8 @@ export function LandingPage() {
           <div className={styles.truthMachine}>
             <Reveal className={styles.rawOffer} delay={0.04}>
               <span>Incoming quote</span>
-              <strong>“About 490, plus extras.”</strong>
-              <small>Unstructured · scope unclear</small>
+              <strong>“CHF 490, all-in.”</strong>
+              <small>Typed tool call · awaiting checks</small>
             </Reveal>
             <Reveal className={styles.validationGate} delay={0.1}>
               <span className={styles.gateRing}>

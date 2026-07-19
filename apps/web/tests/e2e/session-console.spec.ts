@@ -21,11 +21,10 @@ test("presents the Pacta story and opens the negotiation room", async ({
   await page.mouse.move(320, 280);
   await expect(page.getByTestId("cursor-signal")).toHaveCSS("opacity", "1");
 
-  const landing = page.getByTestId("landing-page");
   const marketRequest = page.getByTestId("market-request");
-  await landing.evaluate((element) => {
-    element.style.scrollBehavior = "auto";
-    element.scrollTop = document.getElementById("market")?.offsetTop ?? 0;
+  await page.evaluate(() => {
+    document.documentElement.style.scrollBehavior = "auto";
+    window.scrollTo(0, document.getElementById("market")?.offsetTop ?? 0);
   });
   await expect(
     page.getByRole("img", { name: /confirmed request branching/i }),
@@ -33,9 +32,11 @@ test("presents the Pacta story and opens the negotiation room", async ({
   const requestStartTransform = await marketRequest.evaluate(
     (element) => getComputedStyle(element).transform,
   );
-  await landing.evaluate((element) => {
-    element.scrollTop =
-      (document.getElementById("market")?.offsetTop ?? 0) + 1_000;
+  await page.evaluate(() => {
+    window.scrollTo(
+      0,
+      (document.getElementById("market")?.offsetTop ?? 0) + 1_000,
+    );
   });
   await expect
     .poll(() =>

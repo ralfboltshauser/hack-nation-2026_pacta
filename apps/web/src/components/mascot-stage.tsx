@@ -375,7 +375,7 @@ export function MascotStage({
     window.addEventListener("pointerout", handlePointerOut);
     window.addEventListener("blur", resetGaze);
 
-    renderer.setAnimationLoop((time) => {
+    const renderFrame = (time: number) => {
       const delta = Math.min(Math.max((time - lastTime) / 1_000, 0), 0.1);
       lastTime = time;
       gazeCurrent.lerp(gazeTarget, 1 - Math.exp(-9 * delta));
@@ -385,7 +385,37 @@ export function MascotStage({
       gazeRig.rotation.z = -gazeCurrent.x * 0.012 * turnStrength;
       motionRef.current?.update(delta, gazeCurrent);
       renderer.render(scene, camera);
-    });
+    };
+
+    let isVisible = true;
+    let loopRunning = false;
+    const updateAnimationLoop = () => {
+      const shouldRun =
+        isVisible && !document.hidden && !reducedMotion.matches && !disposed;
+      if (shouldRun === loopRunning) return;
+      loopRunning = shouldRun;
+      if (shouldRun) {
+        lastTime = performance.now();
+        renderer.setAnimationLoop(renderFrame);
+      } else {
+        renderer.setAnimationLoop(null);
+        if (isVisible && !disposed) renderer.render(scene, camera);
+      }
+    };
+
+    const visibilityObserver = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry?.isIntersecting ?? true;
+        updateAnimationLoop();
+      },
+      { rootMargin: "120px" },
+    );
+    const handleVisibilityChange = () => updateAnimationLoop();
+    const handleMotionPreferenceChange = () => updateAnimationLoop();
+    visibilityObserver.observe(host);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    reducedMotion.addEventListener("change", handleMotionPreferenceChange);
+    updateAnimationLoop();
 
     const parts: CharacterParts = {
       leftPod: null,
@@ -415,6 +445,7 @@ export function MascotStage({
           motion.update(0, gazeCurrent);
           const action = actionForEvent(latestEventRef.current);
           if (action) motion.play(action);
+          if (reducedMotion.matches) renderer.render(scene, camera);
           host.dataset.ready = "true";
         } catch (error) {
           console.error("Pacta 3D rig failed to initialize", error);
@@ -439,6 +470,9 @@ export function MascotStage({
       disposed = true;
       motionRef.current = null;
       renderer.setAnimationLoop(null);
+      visibilityObserver.disconnect();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      reducedMotion.removeEventListener("change", handleMotionPreferenceChange);
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerout", handlePointerOut);

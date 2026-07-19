@@ -15,18 +15,22 @@
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   position: relative;
   width: 100%;
-  height: 100vh;
-  height: 100dvh;
-  overflow-x: hidden;
-  overflow-y: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: visible;
   color: var(--ink);
   background: var(--paper);
   font-family: Inter, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
   font-synthesis: none;
-  scroll-behavior: smooth;
   scrollbar-color: rgba(22, 31, 33, 0.34) transparent;
   scrollbar-width: thin;
   isolation: isolate;
+}
+
+:global(body):has(.page) {
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: #f2efe8;
 }
 
 .page::selection {
@@ -204,9 +208,16 @@
   gap: 10px;
   border-radius: 999px;
   transition:
-    transform 140ms var(--ease-out),
+    transform 100ms var(--ease-out),
     background-color 180ms var(--ease-out),
     color 180ms var(--ease-out);
+}
+
+.mobileExplore {
+  display: none;
+  color: #4e585a !important;
+  font-size: 11px;
+  font-weight: 650;
 }
 
 .navCta {
@@ -222,6 +233,7 @@
 .primaryCta:active,
 .finalCta:active {
   transform: scale(0.97);
+  transition-duration: 160ms, 180ms, 180ms;
 }
 
 .hero {
@@ -353,9 +365,10 @@
 .controlCopy h2 em,
 .marketsHeading h2 em,
 .finalCopy h2 em {
-  font-family: Georgia, "Times New Roman", serif;
-  font-weight: 400;
-  letter-spacing: -0.055em;
+  font-family: inherit;
+  font-style: normal;
+  font-weight: 720;
+  letter-spacing: -0.064em;
 }
 
 .hero h1 em {
@@ -508,7 +521,7 @@
   background: rgba(255, 255, 255, 0.68);
   box-shadow: 0 10px 25px rgba(29, 40, 43, 0.06);
   backdrop-filter: blur(12px);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 720;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -567,6 +580,14 @@
   opacity: 0;
 }
 
+.heroDeferredPoster {
+  z-index: 3;
+  padding: 11%;
+  object-fit: contain;
+  filter: saturate(0.92) contrast(1.03);
+  mix-blend-mode: multiply;
+}
+
 .heroMascotHint {
   position: absolute;
   z-index: 6;
@@ -600,7 +621,7 @@
   align-items: center;
   gap: 28px;
   color: #6d7779;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.105em;
   text-transform: uppercase;
@@ -628,7 +649,7 @@
   align-items: center;
   gap: 12px;
   color: #657173;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -720,8 +741,8 @@
 
 .serialBrief span,
 .serialCall span {
-  color: #879092;
-  font-size: 8px;
+  color: #5d696b;
+  font-size: 11px;
   font-weight: 760;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -769,8 +790,8 @@
 
 .serialCall small {
   margin-top: 5px;
-  color: #8a9395;
-  font-size: 9px;
+  color: #626e70;
+  font-size: 11px;
 }
 
 .serialThesis {
@@ -795,8 +816,8 @@
   position: relative;
   height: 340vh;
   min-height: 2400px;
-  color: white;
-  background: var(--night);
+  color: var(--ink);
+  background: #f7f7f5;
 }
 
 .marketSticky {
@@ -813,23 +834,23 @@
   background:
     radial-gradient(
       circle at 74% 46%,
-      rgba(37, 103, 255, 0.18),
-      transparent 34%
+      rgba(37, 103, 255, 0.09),
+      transparent 38%
     ),
     radial-gradient(
       circle at 54% 110%,
-      rgba(143, 245, 235, 0.08),
+      rgba(143, 245, 235, 0.13),
       transparent 36%
     ),
-    var(--night);
+    #f7f7f5;
 }
 
 .marketSticky::before {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(rgba(17, 23, 25, 0.027) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 23, 25, 0.027) 1px, transparent 1px);
   background-size: 60px 60px;
   content: "";
   mask-image: radial-gradient(circle at 70% 50%, black, transparent 68%);
@@ -844,7 +865,7 @@
 .marketCopy .sectionKicker,
 .controlCopy .sectionKicker,
 .finalCopy .sectionKicker {
-  color: rgba(255, 255, 255, 0.49);
+  color: #5d696b;
 }
 
 .marketCopy h2,
@@ -855,13 +876,16 @@
 
 .marketCopy h2 em,
 .controlCopy h2 em {
-  color: var(--cyan);
+  color: var(--blue);
 }
 
 .marketStepList {
   display: grid;
   gap: 0;
   margin-top: clamp(40px, 5vh, 70px);
+  margin-bottom: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .marketStep {
@@ -869,8 +893,8 @@
   grid-template-columns: 34px 1fr;
   gap: 12px;
   padding: 15px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.32);
+  border-top: 1px solid rgba(17, 23, 25, 0.1);
+  color: #697577;
   transition:
     color 220ms var(--ease-out),
     opacity 220ms var(--ease-out),
@@ -879,7 +903,7 @@
 
 .marketStep > span {
   padding-top: 2px;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -890,23 +914,23 @@
 }
 
 .marketStep strong {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 650;
 }
 
 .marketStep p {
   margin: 5px 0 0;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
 .marketStepActive {
-  color: white;
+  color: var(--ink);
   transform: translate3d(5px, 0, 0);
 }
 
 .marketStepActive > span {
-  color: var(--cyan);
+  color: var(--blue);
 }
 
 .marketVisual {
@@ -915,22 +939,34 @@
   width: min(100%, 820px);
   aspect-ratio: 1.2 / 1;
   justify-self: end;
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  border-radius: 38px;
+  border: 1px solid rgba(17, 23, 25, 0.11);
+  border-radius: 28px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(255, 255, 255, 0.64);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 50px 110px rgba(0, 0, 0, 0.32);
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 38px 90px rgba(31, 45, 49, 0.09);
   backdrop-filter: blur(10px);
+}
+
+.illustrativeLabel {
+  position: absolute;
+  z-index: 10;
+  top: 18px;
+  left: 20px;
+  color: #596668;
+  font-size: 11px;
+  font-weight: 720;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .marketGrid {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(17, 23, 25, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 23, 25, 0.035) 1px, transparent 1px);
   background-size: 38px 38px;
   mask-image: radial-gradient(circle at 48% 50%, black 10%, transparent 70%);
 }
@@ -941,10 +977,14 @@
   left: calc(43% - 142px);
   width: 284px;
   height: 284px;
-  border: 1px solid rgba(143, 245, 235, 0.18);
+  border: 1px solid rgba(37, 103, 255, 0.16);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(37, 103, 255, 0.2), transparent 66%);
-  box-shadow: 0 0 100px rgba(37, 103, 255, 0.16);
+  background: radial-gradient(
+    circle,
+    rgba(37, 103, 255, 0.15),
+    transparent 66%
+  );
+  box-shadow: 0 0 100px rgba(37, 103, 255, 0.11);
   will-change: transform;
 }
 
@@ -955,13 +995,13 @@
   left: 43%;
   width: clamp(180px, 19vw, 268px);
   aspect-ratio: 1 / 1;
-  border: 1px solid rgba(255, 255, 255, 0.13);
+  border: 1px solid rgba(17, 23, 25, 0.11);
   border-radius: 50%;
   overflow: hidden;
   background: #ececeb;
   box-shadow:
-    0 28px 70px rgba(0, 0, 0, 0.35),
-    0 0 0 10px rgba(255, 255, 255, 0.025);
+    0 28px 70px rgba(31, 45, 49, 0.13),
+    0 0 0 10px rgba(37, 103, 255, 0.025);
   transform: translate(-50%, -50%);
 }
 
@@ -977,7 +1017,7 @@
   top: 14px;
   left: 50%;
   color: rgba(17, 23, 25, 0.42);
-  font-size: 7px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.17em;
   transform: translateX(-50%);
@@ -1004,11 +1044,11 @@
   width: 180px;
   display: grid;
   padding: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(17, 23, 25, 0.13);
   border-radius: 16px;
-  color: white;
-  background: rgba(20, 28, 30, 0.92);
-  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.28);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.93);
+  box-shadow: 0 22px 55px rgba(27, 42, 46, 0.12);
   backdrop-filter: blur(12px);
   will-change: transform, opacity;
 }
@@ -1016,8 +1056,8 @@
 .requestPacket > span,
 .supplierNode > span,
 .decisionCard > span {
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 7px;
+  color: #596668;
+  font-size: 11px;
   font-weight: 760;
   letter-spacing: 0.11em;
   text-transform: uppercase;
@@ -1030,8 +1070,8 @@
 
 .requestPacket small {
   margin-top: 4px;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 8px;
+  color: #5d696b;
+  font-size: 11px;
 }
 
 .requestPacket i {
@@ -1039,8 +1079,8 @@
   align-items: center;
   gap: 5px;
   margin-top: 11px;
-  color: var(--cyan);
-  font-size: 7px;
+  color: #176c4a;
+  font-size: 10px;
   font-style: normal;
   font-weight: 680;
   letter-spacing: 0.08em;
@@ -1056,8 +1096,8 @@
   height: 1px;
   background: linear-gradient(
     90deg,
-    rgba(143, 245, 235, 0.6),
-    rgba(86, 139, 255, 0.2)
+    rgba(37, 103, 255, 0.68),
+    rgba(37, 103, 255, 0.18)
   );
   transform-origin: left center;
   will-change: transform, opacity;
@@ -1070,8 +1110,8 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--cyan);
-  box-shadow: 0 0 12px rgba(143, 245, 235, 0.72);
+  background: var(--blue);
+  box-shadow: 0 0 12px rgba(37, 103, 255, 0.45);
   content: "";
 }
 
@@ -1093,10 +1133,10 @@
   align-content: center;
   gap: 5px;
   padding: 12px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.11);
+  border: 1px solid rgba(17, 23, 25, 0.11);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.05);
-  box-shadow: 0 15px 32px rgba(0, 0, 0, 0.16);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 15px 32px rgba(30, 43, 46, 0.08);
   backdrop-filter: blur(12px);
   will-change: transform, opacity;
 }
@@ -1114,7 +1154,8 @@
 }
 
 .supplierNode strong {
-  font-size: 10px;
+  color: #253234;
+  font-size: 11px;
   font-weight: 620;
 }
 
@@ -1138,13 +1179,13 @@
   align-items: center;
   gap: 6px;
   padding: 8px 10px;
-  border: 1px solid rgba(185, 247, 210, 0.28);
+  border: 1px solid rgba(29, 155, 99, 0.22);
   border-radius: 999px;
-  color: #d8ffe7;
-  background: rgba(21, 76, 52, 0.82);
-  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2);
+  color: #176c4a;
+  background: rgba(238, 252, 244, 0.94);
+  box-shadow: 0 12px 25px rgba(30, 72, 52, 0.1);
   backdrop-filter: blur(12px);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 680;
   white-space: nowrap;
   will-change: transform, opacity;
@@ -1170,6 +1211,10 @@
   will-change: transform, opacity;
 }
 
+.decisionCard > span {
+  color: rgba(255, 255, 255, 0.78);
+}
+
 .decisionCard strong {
   margin-top: 6px;
   font-size: 17px;
@@ -1178,8 +1223,8 @@
 
 .decisionCard small {
   margin-top: 4px;
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 8px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 11px;
 }
 
 .marketCounter {
@@ -1190,7 +1235,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: rgba(255, 255, 255, 0.82);
+  color: #344244;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
@@ -1198,12 +1243,12 @@
 .marketCounter i {
   width: 38px;
   height: 1px;
-  background: rgba(255, 255, 255, 0.24);
+  background: rgba(17, 23, 25, 0.2);
 }
 
 .marketCounter small {
-  color: rgba(255, 255, 255, 0.34);
-  font-size: 9px;
+  color: #697577;
+  font-size: 11px;
 }
 
 .trustSection {
@@ -1313,8 +1358,8 @@
 .rawOffer > span,
 .verifiedOffer > span,
 .validationGate > strong {
-  color: #7c8789;
-  font-size: 8px;
+  color: #566466;
+  font-size: 11px;
   font-weight: 750;
   letter-spacing: 0.095em;
   text-transform: uppercase;
@@ -1332,8 +1377,8 @@
 .rawOffer small,
 .verifiedOffer small {
   margin-top: 16px;
-  color: #8a9394;
-  font-size: 9px;
+  color: #5d696b;
+  font-size: 11px;
 }
 
 .rawOffer {
@@ -1387,7 +1432,7 @@
   align-items: center;
   gap: 6px;
   color: #5e6a6c;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .validationGate > div svg {
@@ -1472,27 +1517,27 @@
   gap: clamp(46px, 8vw, 150px);
   padding: clamp(100px, 12vw, 180px) clamp(24px, 7vw, 112px);
   overflow: hidden;
-  color: white;
+  color: var(--ink);
   background:
     radial-gradient(
       circle at 88% 82%,
-      rgba(143, 245, 235, 0.09),
+      rgba(143, 245, 235, 0.15),
       transparent 28%
     ),
     radial-gradient(
       circle at 18% 20%,
-      rgba(37, 103, 255, 0.16),
+      rgba(37, 103, 255, 0.08),
       transparent 31%
     ),
-    #101516;
+    #fafaf8;
 }
 
 .controlSection::before {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.024) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.024) 1px, transparent 1px);
+    linear-gradient(rgba(17, 23, 25, 0.026) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 23, 25, 0.026) 1px, transparent 1px);
   background-size: 54px 54px;
   content: "";
   mask-image: linear-gradient(90deg, black, transparent 75%);
@@ -1523,7 +1568,7 @@
 .controlCopy > p:last-child {
   max-width: 450px;
   margin: 30px 0 0;
-  color: rgba(255, 255, 255, 0.52);
+  color: #596668;
   font-size: clamp(14px, 1.25vw, 18px);
   line-height: 1.55;
 }
@@ -1544,16 +1589,16 @@
   flex-direction: column;
   justify-content: flex-end;
   padding: 27px;
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  border-radius: 28px;
+  border: 1px solid rgba(17, 23, 25, 0.11);
+  border-radius: 24px;
   background:
     radial-gradient(
       circle at 80% 15%,
-      rgba(86, 139, 255, 0.16),
+      rgba(86, 139, 255, 0.11),
       transparent 30%
     ),
-    rgba(255, 255, 255, 0.055);
-  box-shadow: 0 35px 75px rgba(0, 0, 0, 0.22);
+    rgba(255, 255, 255, 0.84);
+  box-shadow: 0 35px 75px rgba(27, 42, 46, 0.09);
   backdrop-filter: blur(16px);
 }
 
@@ -1563,7 +1608,7 @@
   left: 26px;
   width: 54px;
   height: 54px;
-  border: 1px solid rgba(255, 255, 255, 0.13);
+  border: 1px solid rgba(37, 103, 255, 0.14);
   border-radius: 50%;
   background: radial-gradient(
     circle,
@@ -1574,8 +1619,8 @@
 }
 
 .commitmentCard > span {
-  color: rgba(255, 255, 255, 0.38);
-  font-size: 8px;
+  color: #566466;
+  font-size: 11px;
   font-weight: 760;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1590,8 +1635,8 @@
 
 .commitmentCard > small {
   margin-top: 9px;
-  color: rgba(255, 255, 255, 0.47);
-  font-size: 10px;
+  color: #5d696b;
+  font-size: 11px;
 }
 
 .commitmentCard > i {
@@ -1600,9 +1645,9 @@
   gap: 7px;
   margin-top: 24px;
   padding-top: 17px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  color: #9abafc;
-  font-size: 8px;
+  border-top: 1px solid rgba(17, 23, 25, 0.1);
+  color: #2457c4;
+  font-size: 10px;
   font-style: normal;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -1610,14 +1655,14 @@
 }
 
 .commitmentCardFinal {
-  border-color: rgba(185, 247, 210, 0.24);
+  border-color: rgba(29, 155, 99, 0.22);
   background:
     radial-gradient(
       circle at 80% 15%,
-      rgba(185, 247, 210, 0.17),
+      rgba(185, 247, 210, 0.32),
       transparent 30%
     ),
-    rgba(185, 247, 210, 0.055);
+    rgba(245, 255, 249, 0.9);
 }
 
 .commitmentCardFinal::before {
@@ -1626,19 +1671,19 @@
 }
 
 .commitmentCardFinal > i {
-  color: var(--mint);
+  color: #176c4a;
 }
 
 .commitmentArrow {
   display: grid;
   place-items: center;
   gap: 12px;
-  color: rgba(255, 255, 255, 0.34);
+  color: #657173;
   text-align: center;
 }
 
 .commitmentArrow span {
-  font-size: 7px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1655,23 +1700,23 @@
   border-radius: 50% 0 0 0;
   background: radial-gradient(
     circle at 55% 48%,
-    rgba(255, 255, 255, 0.12),
+    rgba(37, 103, 255, 0.08),
     transparent 60%
   );
-  opacity: 0.38;
+  opacity: 0.16;
 }
 
 .controlMascot img {
   object-fit: contain;
-  filter: grayscale(1) contrast(1.28);
-  mix-blend-mode: screen;
+  filter: grayscale(0.3) contrast(1.08);
+  mix-blend-mode: multiply;
 }
 
 .controlMascot span {
   position: absolute;
   z-index: 2;
   inset: 20%;
-  border: 1px solid rgba(143, 245, 235, 0.18);
+  border: 1px solid rgba(37, 103, 255, 0.16);
   border-radius: 50%;
 }
 
@@ -1752,7 +1797,7 @@
 .marketCard > p {
   max-width: 410px;
   margin: 16px 0 0;
-  color: rgba(255, 255, 255, 0.57);
+  color: rgba(255, 255, 255, 0.82);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -1765,8 +1810,8 @@
   display: flex;
   justify-content: flex-end;
   gap: 18px;
-  color: rgba(255, 255, 255, 0.52);
-  font-size: 7px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 10px;
   font-weight: 720;
   letter-spacing: 0.08em;
   text-align: right;
@@ -1774,7 +1819,7 @@
 }
 
 .marketCardTopline small {
-  color: rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.68);
   font-size: inherit;
 }
 
@@ -1798,8 +1843,8 @@
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 16px;
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 9px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 11px;
   font-weight: 680;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -1843,15 +1888,15 @@
 }
 
 .contractorCard .marketCardTopline {
-  color: rgba(19, 32, 33, 0.58);
+  color: #405153;
 }
 
 .contractorCard .marketCardTopline small {
-  color: rgba(19, 32, 33, 0.35);
+  color: #536466;
 }
 
 .contractorCard > p {
-  color: rgba(19, 32, 33, 0.57);
+  color: #405153;
 }
 
 .contractorFields {
@@ -1870,9 +1915,9 @@
   place-items: center;
   border: 1px solid rgba(19, 32, 33, 0.13);
   border-radius: 14px;
-  color: rgba(19, 32, 33, 0.58);
+  color: #405153;
   background: rgba(255, 255, 255, 0.29);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 730;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1887,19 +1932,19 @@
   gap: clamp(40px, 8vw, 145px);
   padding: clamp(110px, 13vw, 190px) clamp(24px, 7vw, 112px);
   overflow: hidden;
-  color: white;
+  color: var(--ink);
   background:
     radial-gradient(
       circle at 25% 48%,
-      rgba(37, 103, 255, 0.2),
-      transparent 31%
+      rgba(37, 103, 255, 0.11),
+      transparent 34%
     ),
     radial-gradient(
       circle at 80% 85%,
-      rgba(143, 245, 235, 0.07),
+      rgba(143, 245, 235, 0.14),
       transparent 27%
     ),
-    #0e1314;
+    #f8f8f6;
 }
 
 .finalSection::before {
@@ -1908,7 +1953,7 @@
   background: linear-gradient(
     115deg,
     transparent 42%,
-    rgba(255, 255, 255, 0.035),
+    rgba(37, 103, 255, 0.035),
     transparent 57%
   );
   content: "";
@@ -1926,7 +1971,7 @@
 
 .finalRings i {
   position: absolute;
-  border: 1px solid rgba(143, 245, 235, 0.1);
+  border: 1px solid rgba(37, 103, 255, 0.12);
   border-radius: 50%;
 }
 
@@ -1949,12 +1994,12 @@
   aspect-ratio: 1 / 1;
   justify-self: center;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(17, 23, 25, 0.11);
   border-radius: 50%;
   background: #ececea;
   box-shadow:
-    0 55px 120px rgba(0, 0, 0, 0.38),
-    0 0 0 16px rgba(255, 255, 255, 0.025);
+    0 55px 120px rgba(30, 43, 46, 0.13),
+    0 0 0 16px rgba(37, 103, 255, 0.025);
 }
 
 .finalMascot img {
@@ -1975,12 +2020,12 @@
 }
 
 .finalCopy h2 em {
-  color: var(--cyan);
+  color: var(--blue);
 }
 
 .finalCopy > p:not(.sectionKicker) {
   margin: 30px 0 0;
-  color: rgba(255, 255, 255, 0.5);
+  color: #596668;
   font-size: clamp(14px, 1.3vw, 19px);
 }
 
@@ -1988,9 +2033,9 @@
   width: fit-content;
   margin-top: 34px;
   padding: 16px 21px;
-  color: #0d1c1d !important;
-  background: var(--cyan);
-  box-shadow: 0 18px 45px rgba(143, 245, 235, 0.15);
+  color: white !important;
+  background: var(--blue);
+  box-shadow: 0 18px 45px rgba(37, 103, 255, 0.2);
   font-size: 13px;
   font-weight: 730;
 }
@@ -2067,7 +2112,7 @@
   }
 
   .finalCta:hover {
-    background: white;
+    background: #1959e9;
     transform: translate3d(0, -2px, 0);
   }
 }
@@ -2124,11 +2169,16 @@
 
 @media (max-width: 980px) {
   .nav {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
+    gap: 18px;
   }
 
   .navLinks {
     display: none;
+  }
+
+  .mobileExplore {
+    display: inline-flex;
   }
 
   .hero {
@@ -2403,7 +2453,7 @@
     bottom: 24px;
     left: 20px;
     gap: 9px 18px;
-    font-size: 7px;
+    font-size: 10px;
   }
 
   .serialSection,
@@ -2522,12 +2572,12 @@
   }
 
   .supplierNode strong {
-    font-size: 8px;
+    font-size: 10px;
   }
 
   .offerChip {
     left: 39%;
-    font-size: 7px;
+    font-size: 10px;
   }
 
   .decisionCard {
@@ -2660,7 +2710,7 @@
   }
 
   .heroMascotHint {
-    font-size: 8px;
+    font-size: 10px;
   }
 
   .marketVisual {
@@ -2672,7 +2722,7 @@
   }
 
   .supplierNode > span {
-    font-size: 6px;
+    font-size: 10px;
   }
 
   .marketMascot {
@@ -2702,10 +2752,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page {
-    scroll-behavior: auto;
-  }
-
   .heroOrbit,
   .scrollCue i::after {
     animation: none;
@@ -2717,6 +2763,14 @@
   }
 
   .page [data-reveal="true"] {
+    transform: none !important;
+  }
+
+  .hero h1,
+  .heroKicker,
+  .heroLede,
+  .heroActions,
+  .heroMascotShell {
     transform: none !important;
   }
 
@@ -2738,11 +2792,14 @@
 
   .marketStory {
     height: auto;
-    min-height: 980px;
+    min-height: 0;
   }
 
   .marketSticky {
     position: relative;
+    height: auto;
+    min-height: 980px;
+    overflow: visible;
   }
 
   .requestPacket {
@@ -2779,7 +2836,8 @@
   }
 
   .marketStep {
-    color: rgba(255, 255, 255, 0.78);
+    display: grid;
+    color: #334244;
     transform: none;
   }
 }
