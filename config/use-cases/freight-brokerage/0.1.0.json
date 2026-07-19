@@ -1,0 +1,723 @@
+{
+  "contractVersion": "1",
+  "key": "freight_brokerage",
+  "version": "0.1.0",
+  "terminology": {
+    "customer": { "singular": "shipper", "plural": "shippers" },
+    "supplier": { "singular": "carrier", "plural": "carriers" },
+    "job": { "singular": "load", "plural": "loads" },
+    "offer": { "singular": "quote", "plural": "quotes" },
+    "session": { "singular": "sourcing session", "plural": "sourcing sessions" }
+  },
+  "capabilities": { "voice": true, "chat": true, "files": true },
+  "job": {
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "origin": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "city": { "type": "string", "minLength": 1 },
+            "country": { "type": "string", "minLength": 2 }
+          },
+          "required": ["city", "country"]
+        },
+        "destination": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "city": { "type": "string", "minLength": 1 },
+            "country": { "type": "string", "minLength": 2 }
+          },
+          "required": ["city", "country"]
+        },
+        "pickupWindow": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "start": { "type": "string", "format": "date-time" },
+            "end": { "type": "string", "format": "date-time" }
+          },
+          "required": ["start", "end"]
+        },
+        "deliveryWindow": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "start": { "type": "string", "format": "date-time" },
+            "end": { "type": "string", "format": "date-time" }
+          },
+          "required": ["start", "end"]
+        },
+        "equipmentType": {
+          "type": "string",
+          "enum": ["dry_van_53", "reefer_53", "flatbed", "box_truck"]
+        },
+        "commodity": { "type": "string", "minLength": 1 },
+        "weightKg": { "type": "integer", "minimum": 1 },
+        "handlingUnits": { "type": "integer", "minimum": 1 },
+        "hazmat": { "type": "boolean" },
+        "specialServices": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "declaredValue": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+            "amountMinor": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["currency", "amountMinor"]
+        },
+        "risk": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "criticality": {
+              "type": "string",
+              "enum": ["standard", "critical"]
+            },
+            "minimumCoverageMinor": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["criticality", "minimumCoverageMinor"]
+        }
+      },
+      "required": [
+        "origin",
+        "destination",
+        "pickupWindow",
+        "deliveryWindow",
+        "equipmentType",
+        "commodity",
+        "weightKg",
+        "handlingUnits",
+        "hazmat",
+        "specialServices",
+        "risk"
+      ]
+    },
+    "completion": {
+      "mustBeKnown": [
+        "/hazmat",
+        "/specialServices",
+        "/risk/criticality",
+        "/risk/minimumCoverageMinor"
+      ],
+      "allowExplicitUnknown": [],
+      "confirmation": {
+        "required": true,
+        "readbackPaths": [
+          "/origin/city",
+          "/destination/city",
+          "/pickupWindow/start",
+          "/deliveryWindow/end",
+          "/equipmentType",
+          "/commodity",
+          "/weightKg",
+          "/hazmat",
+          "/specialServices",
+          "/risk/criticality"
+        ],
+        "prompt": "Please confirm that this load specification is correct before I contact carriers."
+      }
+    },
+    "fields": [
+      {
+        "path": "/origin/city",
+        "label": "Origin city",
+        "priority": 100,
+        "questions": {
+          "voice": ["Where should the load be picked up?"],
+          "chat": ["What is the pickup city?"]
+        },
+        "documentHints": ["origin", "pickup"],
+        "confirmationLabel": "Origin",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/origin/country",
+        "label": "Origin country",
+        "priority": 99,
+        "questions": {
+          "voice": ["Which country is the pickup in?"],
+          "chat": ["What is the pickup country?"]
+        },
+        "documentHints": ["origin country"],
+        "confirmationLabel": "Origin country",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/destination/city",
+        "label": "Destination city",
+        "priority": 98,
+        "questions": {
+          "voice": ["Where should the load be delivered?"],
+          "chat": ["What is the delivery city?"]
+        },
+        "documentHints": ["destination", "delivery"],
+        "confirmationLabel": "Destination",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/destination/country",
+        "label": "Destination country",
+        "priority": 97,
+        "questions": {
+          "voice": ["Which country is the delivery in?"],
+          "chat": ["What is the delivery country?"]
+        },
+        "documentHints": ["destination country"],
+        "confirmationLabel": "Destination country",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/pickupWindow/start",
+        "label": "Pickup start",
+        "priority": 94,
+        "questions": {
+          "voice": ["What is the earliest pickup time?"],
+          "chat": ["What is the earliest pickup time?"]
+        },
+        "documentHints": ["pickup window", "ready time"],
+        "confirmationLabel": "Pickup starts",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/pickupWindow/end",
+        "label": "Pickup end",
+        "priority": 93,
+        "questions": {
+          "voice": ["What is the latest acceptable pickup time?"],
+          "chat": ["What is the latest pickup time?"]
+        },
+        "documentHints": ["pickup deadline"],
+        "confirmationLabel": "Pickup ends",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/deliveryWindow/start",
+        "label": "Delivery start",
+        "priority": 92,
+        "questions": {
+          "voice": ["What is the earliest delivery time?"],
+          "chat": ["What is the earliest delivery time?"]
+        },
+        "documentHints": ["delivery window"],
+        "confirmationLabel": "Delivery starts",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/deliveryWindow/end",
+        "label": "Delivery end",
+        "priority": 91,
+        "questions": {
+          "voice": ["What is the delivery deadline?"],
+          "chat": ["What is the delivery deadline?"]
+        },
+        "documentHints": ["delivery deadline"],
+        "confirmationLabel": "Delivery deadline",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/equipmentType",
+        "label": "Equipment",
+        "priority": 88,
+        "questions": {
+          "voice": ["What equipment does the load require?"],
+          "chat": ["What equipment is required?"]
+        },
+        "documentHints": ["equipment", "trailer"],
+        "confirmationLabel": "Equipment",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/commodity",
+        "label": "Commodity",
+        "priority": 86,
+        "questions": {
+          "voice": ["What commodity are we moving?"],
+          "chat": ["What is the commodity?"]
+        },
+        "documentHints": ["commodity", "description"],
+        "confirmationLabel": "Commodity",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/weightKg",
+        "label": "Weight",
+        "priority": 84,
+        "questions": {
+          "voice": ["What is the total weight in kilograms?"],
+          "chat": ["What is the total weight in kilograms?"]
+        },
+        "documentHints": ["weight", "gross weight"],
+        "confirmationLabel": "Weight",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/handlingUnits",
+        "label": "Handling units",
+        "priority": 82,
+        "questions": {
+          "voice": ["How many pallets or handling units are there?"],
+          "chat": ["How many handling units are there?"]
+        },
+        "documentHints": ["pallets", "handling units"],
+        "confirmationLabel": "Handling units",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/hazmat",
+        "label": "Hazardous material",
+        "priority": 80,
+        "questions": {
+          "voice": ["Is the shipment hazardous material?"],
+          "chat": ["Is this hazardous material?"]
+        },
+        "documentHints": ["hazmat", "dangerous goods"],
+        "confirmationLabel": "Hazmat",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/specialServices",
+        "label": "Special services",
+        "priority": 78,
+        "questions": {
+          "voice": [
+            "Are any special services required, or should I record none?"
+          ],
+          "chat": [
+            "List any special services, or enter an empty list for none."
+          ]
+        },
+        "documentHints": [
+          "liftgate",
+          "customs",
+          "appointment",
+          "special services"
+        ],
+        "confirmationLabel": "Special services",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/risk/criticality",
+        "label": "Criticality",
+        "priority": 76,
+        "questions": {
+          "voice": ["Is this a standard or critical shipment?"],
+          "chat": ["Is this shipment standard or critical?"]
+        },
+        "documentHints": ["critical", "priority"],
+        "confirmationLabel": "Criticality",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/risk/minimumCoverageMinor",
+        "label": "Minimum coverage",
+        "priority": 74,
+        "questions": {
+          "voice": [
+            "What minimum cargo coverage is required, in minor currency units?"
+          ],
+          "chat": ["What minimum cargo coverage is required?"]
+        },
+        "documentHints": ["insurance", "coverage"],
+        "confirmationLabel": "Minimum coverage",
+        "sensitivity": "normal"
+      }
+    ]
+  },
+  "intake": {
+    "channels": {
+      "voice": { "enabled": true, "askOneQuestionAtATime": true },
+      "chat": {
+        "enabled": true,
+        "fileInput": {
+          "enabled": true,
+          "acceptedTypes": ["application/pdf", "image/png", "image/jpeg"],
+          "maxFiles": 3
+        }
+      }
+    },
+    "questionSelection": {
+      "strategy": "highest_priority_missing_field",
+      "avoidRepeatingAnsweredFields": true
+    },
+    "sourceConflict": { "strategy": "ask_customer", "showBothValues": true }
+  },
+  "suppliers": {
+    "defaultCount": 3,
+    "defaultParallelism": 3,
+    "maxCount": 10,
+    "discovery": {
+      "adapterKey": "static.v1",
+      "queryInputs": ["/origin/city", "/destination/city", "/equipmentType"],
+      "eligibilityRuleIds": []
+    }
+  },
+  "offer": {
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pricing": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+            "lineItems": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "code": { "type": "string" },
+                  "label": { "type": "string" },
+                  "amountMinor": { "type": "integer", "minimum": 0 },
+                  "basis": { "type": "string", "enum": ["flat", "per_unit"] }
+                },
+                "required": ["code", "label", "amountMinor", "basis"]
+              }
+            },
+            "allInTotalMinor": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["currency", "lineItems", "allInTotalMinor"]
+        },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pickupCommitment": { "type": "string", "format": "date-time" },
+            "deliveryCommitment": { "type": "string", "format": "date-time" },
+            "equipmentType": { "type": "string" }
+          },
+          "required": [
+            "pickupCommitment",
+            "deliveryCommitment",
+            "equipmentType"
+          ]
+        },
+        "terms": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "quoteType": { "type": "string", "enum": ["firm", "estimate"] },
+            "validUntil": { "type": "string", "format": "date-time" },
+            "paymentTerms": { "type": "string" },
+            "tollsIncluded": { "type": "boolean" }
+          },
+          "required": ["quoteType", "validUntil", "paymentTerms"]
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "confirmed": { "type": "boolean" },
+            "limitMinor": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["confirmed", "limitMinor"]
+        },
+        "conditions": { "type": "array", "items": { "type": "string" } },
+        "exclusions": { "type": "array", "items": { "type": "string" } },
+        "unknowns": { "type": "array", "items": { "type": "string" } },
+        "normalized": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "totalMinor": { "type": "integer", "minimum": 0 } },
+          "required": ["totalMinor"]
+        }
+      },
+      "required": [
+        "pricing",
+        "service",
+        "terms",
+        "coverage",
+        "conditions",
+        "exclusions",
+        "unknowns",
+        "normalized"
+      ]
+    },
+    "fields": [
+      {
+        "path": "/pricing/allInTotalMinor",
+        "label": "All-in total",
+        "priority": 100,
+        "questions": {
+          "voice": ["What is your all-in price?"],
+          "chat": ["What is the all-in total?"]
+        }
+      },
+      {
+        "path": "/terms/tollsIncluded",
+        "label": "Tolls included",
+        "priority": 95,
+        "questions": {
+          "voice": ["Are all road tolls included?"],
+          "chat": ["Are tolls included?"]
+        }
+      },
+      {
+        "path": "/coverage/confirmed",
+        "label": "Coverage confirmed",
+        "priority": 94,
+        "questions": {
+          "voice": ["Can you confirm cargo coverage?"],
+          "chat": ["Is cargo coverage confirmed?"]
+        }
+      },
+      {
+        "path": "/coverage/limitMinor",
+        "label": "Coverage limit",
+        "priority": 93,
+        "questions": {
+          "voice": ["What is the cargo coverage limit?"],
+          "chat": ["What is the coverage limit?"]
+        }
+      }
+    ],
+    "lineItems": {
+      "enabled": true,
+      "path": "/pricing/lineItems",
+      "catalog": [
+        {
+          "key": "linehaul",
+          "label": "Linehaul",
+          "aliases": ["transport", "base rate"]
+        },
+        {
+          "key": "fuel",
+          "label": "Fuel surcharge",
+          "aliases": ["fuel", "diesel surcharge"]
+        },
+        {
+          "key": "tolls",
+          "label": "Tolls",
+          "aliases": ["road tolls", "road charges"]
+        },
+        {
+          "key": "insurance",
+          "label": "Cargo insurance",
+          "aliases": ["coverage", "goods insurance"]
+        }
+      ],
+      "unknownItemPolicy": "allow_with_description"
+    },
+    "normalizers": [
+      {
+        "functionKey": "money.sum_line_items.v1",
+        "inputs": ["/pricing/lineItems"],
+        "output": "/normalized/totalMinor"
+      }
+    ],
+    "completion": {
+      "mustBeKnown": [
+        "/pricing/allInTotalMinor",
+        "/terms/tollsIncluded",
+        "/coverage/confirmed",
+        "/coverage/limitMinor"
+      ],
+      "terminalStatuses": ["comparable", "declined", "callback", "unreachable"]
+    },
+    "clarificationRules": [
+      {
+        "id": "freight_tolls_resolved",
+        "when": {
+          "source": "offer",
+          "path": "/terms/tollsIncluded",
+          "op": "missing"
+        },
+        "effect": {
+          "blocksComparability": true,
+          "severity": "required",
+          "questions": {
+            "voice": ["Are all road tolls included in that price?"],
+            "chat": ["Are all road tolls included?"]
+          }
+        }
+      },
+      {
+        "id": "freight_coverage_resolved",
+        "when": {
+          "source": "offer",
+          "path": "/coverage/confirmed",
+          "op": "missing"
+        },
+        "effect": {
+          "blocksComparability": true,
+          "severity": "required",
+          "questions": {
+            "voice": ["Can you confirm whether cargo coverage is included?"],
+            "chat": ["Is cargo coverage confirmed?"]
+          }
+        }
+      }
+    ],
+    "comparability": {
+      "requiredPaths": [
+        "/normalized/totalMinor",
+        "/terms/tollsIncluded",
+        "/coverage/confirmed",
+        "/coverage/limitMinor"
+      ],
+      "ruleIds": ["freight_tolls_resolved", "freight_coverage_resolved"],
+      "sameCurrencyRequired": true
+    }
+  },
+  "negotiation": {
+    "phases": [
+      "presenting_job",
+      "qualifying",
+      "quoting",
+      "clarifying",
+      "bargaining",
+      "waiting",
+      "closing",
+      "closed"
+    ],
+    "initialPhase": "presenting_job",
+    "transitions": [],
+    "outcomes": [
+      "selected_confirmed",
+      "not_selected_notified",
+      "supplier_declined",
+      "incompatible",
+      "callback_committed",
+      "unreachable",
+      "disconnected_without_recovery",
+      "commitment_failed",
+      "cancelled",
+      "failed"
+    ],
+    "levers": [
+      {
+        "id": "verified_all_in_price",
+        "factKey": "verified_all_in_price",
+        "allowedPhases": ["bargaining", "waiting"],
+        "discloseSupplierIdentity": false,
+        "prompt": "I have a verified comparable all-in offer at {{amount}}. Can you improve your terms?"
+      }
+    ],
+    "limits": { "maxConcessionRequests": 2, "maxDurationSeconds": 600 }
+  },
+  "recommendation": {
+    "eligibilityRules": [
+      {
+        "id": "critical_load_requires_coverage",
+        "when": {
+          "all": [
+            {
+              "source": "job",
+              "path": "/risk/criticality",
+              "op": "eq",
+              "value": "critical"
+            },
+            {
+              "any": [
+                {
+                  "source": "offer",
+                  "path": "/coverage/confirmed",
+                  "op": "missing"
+                },
+                {
+                  "source": "offer",
+                  "path": "/coverage/confirmed",
+                  "op": "eq",
+                  "value": false
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "eligible": false,
+          "severity": "blocker",
+          "reason": "Required cargo coverage is not confirmed."
+        }
+      }
+    ],
+    "warningRules": [
+      {
+        "id": "standard_load_unconfirmed_coverage",
+        "when": {
+          "all": [
+            {
+              "source": "job",
+              "path": "/risk/criticality",
+              "op": "eq",
+              "value": "standard"
+            },
+            {
+              "source": "offer",
+              "path": "/coverage/confirmed",
+              "op": "eq",
+              "value": false
+            }
+          ]
+        },
+        "effect": {
+          "severity": "warning",
+          "warning": "Cargo coverage is not confirmed."
+        }
+      }
+    ],
+    "metrics": [
+      {
+        "id": "normalized_total",
+        "source": "offer",
+        "path": "/normalized/totalMinor",
+        "type": "number"
+      },
+      {
+        "id": "coverage_limit",
+        "source": "offer",
+        "path": "/coverage/limitMinor",
+        "type": "number"
+      }
+    ],
+    "policies": [
+      {
+        "id": "default",
+        "ranking": [
+          { "metric": "normalized_total", "direction": "asc" },
+          { "metric": "coverage_limit", "direction": "desc" }
+        ]
+      }
+    ],
+    "customerMaySelectNonRecommended": true,
+    "requireExplicitCustomerSelection": true
+  },
+  "customerUpdates": {
+    "materialEventTypes": [
+      "conversation.connected",
+      "offer.revision_created",
+      "offer.became_comparable",
+      "negotiation.outcome_recorded"
+    ],
+    "maxSilenceSeconds": 25,
+    "noChangeAction": "skip_turn",
+    "dedupeByEventSequence": true
+  },
+  "completion": {
+    "reviewReadiness": {
+      "mode": "all_ready_or_deadline",
+      "minimumComparableOffers": 1,
+      "deadlineSeconds": 180,
+      "onDeadline": "review_available_offers"
+    },
+    "keepSupplierCallsOpenUntilCustomerDecision": true,
+    "winnerRequiresExplicitConfirmation": true,
+    "notifyNonSelectedBeforeEnd": true
+  },
+  "presentation": {
+    "accent": "blue",
+    "comparisonColumns": ["normalized_total", "coverage_limit"]
+  },
+  "extensions": {}
+}

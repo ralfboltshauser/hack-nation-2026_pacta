@@ -1,0 +1,438 @@
+{
+  "contractVersion": "1",
+  "key": "contractor_bids",
+  "version": "0.1.0",
+  "terminology": {
+    "customer": { "singular": "homeowner", "plural": "homeowners" },
+    "supplier": { "singular": "contractor", "plural": "contractors" },
+    "job": { "singular": "project", "plural": "projects" },
+    "offer": { "singular": "bid", "plural": "bids" },
+    "session": { "singular": "bid round", "plural": "bid rounds" }
+  },
+  "capabilities": { "voice": true, "chat": true, "files": true },
+  "job": {
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "project": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "location": { "type": "string", "minLength": 1 },
+            "scope": { "type": "string", "minLength": 10 },
+            "desiredStartDate": { "type": "string", "format": "date" },
+            "completionDeadline": { "type": "string", "format": "date" },
+            "materialsProvided": { "type": "boolean" },
+            "permitRequired": { "type": "boolean" }
+          },
+          "required": [
+            "location",
+            "scope",
+            "desiredStartDate",
+            "completionDeadline",
+            "materialsProvided",
+            "permitRequired"
+          ]
+        }
+      },
+      "required": ["project"]
+    },
+    "completion": {
+      "mustBeKnown": ["/project/materialsProvided", "/project/permitRequired"],
+      "allowExplicitUnknown": [],
+      "confirmation": {
+        "required": true,
+        "readbackPaths": [
+          "/project/location",
+          "/project/scope",
+          "/project/desiredStartDate",
+          "/project/completionDeadline",
+          "/project/materialsProvided",
+          "/project/permitRequired"
+        ],
+        "prompt": "Please confirm this project scope before I contact contractors."
+      }
+    },
+    "fields": [
+      {
+        "path": "/project/location",
+        "label": "Project location",
+        "priority": 100,
+        "questions": {
+          "voice": ["Where is the project?"],
+          "chat": ["Where is the project located?"]
+        },
+        "documentHints": ["site", "address"],
+        "confirmationLabel": "Location",
+        "sensitivity": "sensitive"
+      },
+      {
+        "path": "/project/scope",
+        "label": "Scope",
+        "priority": 98,
+        "questions": {
+          "voice": ["Please describe the work you need done."],
+          "chat": ["Describe the project scope."]
+        },
+        "documentHints": ["scope", "work description"],
+        "confirmationLabel": "Scope",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/project/desiredStartDate",
+        "label": "Start date",
+        "priority": 90,
+        "questions": {
+          "voice": ["When should work start?"],
+          "chat": ["What is the desired start date?"]
+        },
+        "documentHints": ["start date"],
+        "confirmationLabel": "Desired start",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/project/completionDeadline",
+        "label": "Deadline",
+        "priority": 88,
+        "questions": {
+          "voice": ["What is the completion deadline?"],
+          "chat": ["What is the completion deadline?"]
+        },
+        "documentHints": ["deadline", "completion"],
+        "confirmationLabel": "Deadline",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/project/materialsProvided",
+        "label": "Materials",
+        "priority": 84,
+        "questions": {
+          "voice": ["Will you provide the materials?"],
+          "chat": ["Will the homeowner provide materials?"]
+        },
+        "documentHints": ["materials"],
+        "confirmationLabel": "Customer provides materials",
+        "sensitivity": "normal"
+      },
+      {
+        "path": "/project/permitRequired",
+        "label": "Permit",
+        "priority": 82,
+        "questions": {
+          "voice": ["Is a permit required?"],
+          "chat": ["Does the project require a permit?"]
+        },
+        "documentHints": ["permit"],
+        "confirmationLabel": "Permit required",
+        "sensitivity": "normal"
+      }
+    ]
+  },
+  "intake": {
+    "channels": {
+      "voice": { "enabled": true, "askOneQuestionAtATime": true },
+      "chat": {
+        "enabled": true,
+        "fileInput": {
+          "enabled": true,
+          "acceptedTypes": ["application/pdf", "image/png", "image/jpeg"],
+          "maxFiles": 3
+        }
+      }
+    },
+    "questionSelection": {
+      "strategy": "highest_priority_missing_field",
+      "avoidRepeatingAnsweredFields": true
+    },
+    "sourceConflict": { "strategy": "ask_customer", "showBothValues": true }
+  },
+  "suppliers": {
+    "defaultCount": 3,
+    "defaultParallelism": 3,
+    "maxCount": 8,
+    "discovery": {
+      "adapterKey": "static.v1",
+      "queryInputs": ["/project/location", "/project/scope"],
+      "eligibilityRuleIds": []
+    }
+  },
+  "offer": {
+    "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pricing": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+            "lineItems": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "code": { "type": "string" },
+                  "label": { "type": "string" },
+                  "amountMinor": { "type": "integer", "minimum": 0 },
+                  "basis": { "type": "string", "enum": ["flat", "per_unit"] }
+                },
+                "required": ["code", "label", "amountMinor", "basis"]
+              }
+            },
+            "allInTotalMinor": { "type": "integer", "minimum": 0 }
+          },
+          "required": ["currency", "lineItems", "allInTotalMinor"]
+        },
+        "schedule": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "startDate": { "type": "string", "format": "date" },
+            "completionDate": { "type": "string", "format": "date" }
+          },
+          "required": ["startDate", "completionDate"]
+        },
+        "terms": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "permitsIncluded": { "type": "boolean" },
+            "warrantyMonths": { "type": "integer", "minimum": 0 },
+            "paymentSchedule": { "type": "string" }
+          },
+          "required": ["warrantyMonths", "paymentSchedule"]
+        },
+        "exclusions": { "type": "array", "items": { "type": "string" } },
+        "normalized": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "totalMinor": { "type": "integer", "minimum": 0 } },
+          "required": ["totalMinor"]
+        }
+      },
+      "required": ["pricing", "schedule", "terms", "exclusions", "normalized"]
+    },
+    "fields": [
+      {
+        "path": "/pricing/allInTotalMinor",
+        "label": "Total bid",
+        "priority": 100,
+        "questions": {
+          "voice": ["What is your total bid?"],
+          "chat": ["What is the total bid?"]
+        }
+      },
+      {
+        "path": "/schedule/startDate",
+        "label": "Start date",
+        "priority": 95,
+        "questions": {
+          "voice": ["When can you start?"],
+          "chat": ["When can work start?"]
+        }
+      },
+      {
+        "path": "/schedule/completionDate",
+        "label": "Completion date",
+        "priority": 94,
+        "questions": {
+          "voice": ["When will the work be complete?"],
+          "chat": ["When will work be complete?"]
+        }
+      },
+      {
+        "path": "/terms/permitsIncluded",
+        "label": "Permits included",
+        "priority": 90,
+        "questions": {
+          "voice": ["Are permit costs included?"],
+          "chat": ["Are permits included?"]
+        }
+      },
+      {
+        "path": "/terms/warrantyMonths",
+        "label": "Warranty",
+        "priority": 88,
+        "questions": {
+          "voice": ["How many months of warranty are included?"],
+          "chat": ["How long is the warranty?"]
+        }
+      }
+    ],
+    "lineItems": {
+      "enabled": true,
+      "path": "/pricing/lineItems",
+      "catalog": [
+        { "key": "labor", "label": "Labor", "aliases": ["work"] },
+        { "key": "materials", "label": "Materials", "aliases": ["supplies"] },
+        { "key": "permits", "label": "Permits", "aliases": ["permit fees"] }
+      ],
+      "unknownItemPolicy": "allow_with_description"
+    },
+    "normalizers": [
+      {
+        "functionKey": "money.sum_line_items.v1",
+        "inputs": ["/pricing/lineItems"],
+        "output": "/normalized/totalMinor"
+      }
+    ],
+    "completion": {
+      "mustBeKnown": [
+        "/pricing/allInTotalMinor",
+        "/schedule/startDate",
+        "/schedule/completionDate",
+        "/terms/warrantyMonths"
+      ],
+      "terminalStatuses": ["comparable", "declined", "callback", "unreachable"]
+    },
+    "clarificationRules": [
+      {
+        "id": "permits_resolved_when_required",
+        "when": {
+          "all": [
+            {
+              "source": "job",
+              "path": "/project/permitRequired",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "source": "offer",
+              "path": "/terms/permitsIncluded",
+              "op": "missing"
+            }
+          ]
+        },
+        "effect": {
+          "blocksComparability": true,
+          "severity": "required",
+          "questions": {
+            "voice": ["Does your price include permit costs?"],
+            "chat": ["Are permit costs included?"]
+          }
+        }
+      }
+    ],
+    "comparability": {
+      "requiredPaths": [
+        "/normalized/totalMinor",
+        "/schedule/startDate",
+        "/schedule/completionDate",
+        "/terms/warrantyMonths"
+      ],
+      "ruleIds": ["permits_resolved_when_required"],
+      "sameCurrencyRequired": true
+    }
+  },
+  "negotiation": {
+    "phases": [
+      "presenting_job",
+      "qualifying",
+      "quoting",
+      "clarifying",
+      "bargaining",
+      "waiting",
+      "closing",
+      "closed"
+    ],
+    "initialPhase": "presenting_job",
+    "transitions": [],
+    "outcomes": [
+      "selected_confirmed",
+      "not_selected_notified",
+      "supplier_declined",
+      "incompatible",
+      "callback_committed",
+      "unreachable",
+      "disconnected_without_recovery",
+      "commitment_failed",
+      "cancelled",
+      "failed"
+    ],
+    "levers": [
+      {
+        "id": "verified_total_bid",
+        "factKey": "verified_total_bid",
+        "allowedPhases": ["bargaining", "waiting"],
+        "discloseSupplierIdentity": false,
+        "prompt": "I have a verified comparable bid at {{amount}}. Can you improve your bid?"
+      }
+    ],
+    "limits": { "maxConcessionRequests": 2, "maxDurationSeconds": 600 }
+  },
+  "recommendation": {
+    "eligibilityRules": [
+      {
+        "id": "must_meet_deadline",
+        "when": {
+          "source": "offer",
+          "path": "/schedule/completionDate",
+          "op": "gt",
+          "value": "2099-01-01"
+        },
+        "effect": {
+          "eligible": false,
+          "severity": "blocker",
+          "reason": "The bid does not meet the configured deadline."
+        }
+      }
+    ],
+    "warningRules": [],
+    "metrics": [
+      {
+        "id": "normalized_total",
+        "source": "offer",
+        "path": "/normalized/totalMinor",
+        "type": "number"
+      },
+      {
+        "id": "warranty_months",
+        "source": "offer",
+        "path": "/terms/warrantyMonths",
+        "type": "number"
+      }
+    ],
+    "policies": [
+      {
+        "id": "default",
+        "ranking": [
+          { "metric": "normalized_total", "direction": "asc" },
+          { "metric": "warranty_months", "direction": "desc" }
+        ]
+      }
+    ],
+    "customerMaySelectNonRecommended": true,
+    "requireExplicitCustomerSelection": true
+  },
+  "customerUpdates": {
+    "materialEventTypes": [
+      "conversation.connected",
+      "offer.revision_created",
+      "offer.became_comparable",
+      "negotiation.outcome_recorded"
+    ],
+    "maxSilenceSeconds": 25,
+    "noChangeAction": "skip_turn",
+    "dedupeByEventSequence": true
+  },
+  "completion": {
+    "reviewReadiness": {
+      "mode": "all_ready_or_deadline",
+      "minimumComparableOffers": 1,
+      "deadlineSeconds": 180,
+      "onDeadline": "review_available_offers"
+    },
+    "keepSupplierCallsOpenUntilCustomerDecision": true,
+    "winnerRequiresExplicitConfirmation": true,
+    "notifyNonSelectedBeforeEnd": true
+  },
+  "presentation": {
+    "accent": "blue",
+    "comparisonColumns": ["normalized_total", "warranty_months"]
+  },
+  "extensions": {}
+}

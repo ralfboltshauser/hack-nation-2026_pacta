@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+
+allowBuilds:
+  esbuild: true
+  sharp: true
+
+catalog:
+  typescript: 6.0.3
+  vitest: 4.1.10
+  zod: 4.4.3

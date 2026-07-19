@@ -1,0 +1,26 @@
+{
+  "name": "@pacta/use-case-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "check": "tsx src/check-configs.ts",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "tsx": "4.23.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "pacta-character",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "visual-check": "node scripts/visual-check.mjs",
+    "generate-audio": "node scripts/generate-audio.mjs",
+    "process-audio": "bash scripts/process-audio.sh"
+  },
+  "dependencies": {
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "playwright-core": "1.61.1",
+    "vite": "8.1.5"
+  }
+}

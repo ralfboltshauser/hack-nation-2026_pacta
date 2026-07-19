@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Live negotiation proof</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main>
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">ELEVENLABS · SHARED STATE PROOF</p>
+          <h1>Parallel calls. One live market.</h1>
+          <p class="subtitle">
+            Each agent session is isolated. Webhook tools publish offers into this
+            local hub and retrieve competing prices before the next response.
+          </p>
+        </div>
+        <div class="connection-block">
+          <span id="live-indicator" class="live-dot"></span>
+          <span id="connection-label">Connecting to event stream…</span>
+          <a id="secure-dashboard" class="button ghost small" target="_blank" rel="noreferrer" hidden>
+            Open secure voice UI
+          </a>
+          <button id="reset-market" class="button ghost small">Reset market</button>
+        </div>
+      </header>
+
+      <section class="load-strip" aria-label="Fixed demo load">
+        <div>
+          <span>LANE</span>
+          <strong id="load-lane">Zurich → Milan</strong>
+        </div>
+        <div>
+          <span>PICKUP</span>
+          <strong id="load-pickup">Tomorrow, 09:00</strong>
+        </div>
+        <div>
+          <span>EQUIPMENT</span>
+          <strong id="load-equipment">Curtain-side truck</strong>
+        </div>
+        <div>
+          <span>CARGO</span>
+          <strong id="load-cargo">12 pallets · 8,000 kg</strong>
+        </div>
+        <div class="version">
+          <span>MARKET VERSION</span>
+          <strong id="market-version">0</strong>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <div class="calls-column">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">ACTIVE CONVERSATIONS</p>
+              <h2>Carrier calls</h2>
+            </div>
+            <p>For voice, use “Talk here” to choose which live call hears your mic.</p>
+          </div>
+
+          <div id="call-grid" class="call-grid"></div>
+        </div>
+
+        <aside>
+          <section class="panel market-panel">
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">AUTHORITATIVE STATE</p>
+                <h2>Offer board</h2>
+              </div>
+              <span id="offer-count" class="pill">0 offers</span>
+            </div>
+            <div id="offer-board" class="offer-board empty-state">
+              Waiting for the first <code>record_offer</code> tool call.
+            </div>
+            <p id="comparison-summary" class="comparison-summary blocked">
+              At least two complete offers with matching scope are required.
+            </p>
+          </section>
+
+          <section class="panel timeline-panel">
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">SERVER-SENT EVENTS</p>
+                <h2>Live timeline</h2>
+              </div>
+            </div>
+            <ol id="timeline" class="timeline"></ol>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <template id="call-card-template">
+      <article class="call-card">
+        <header>
+          <div>
+            <p class="call-kicker">CARRIER SESSION</p>
+            <h3 class="carrier-name"></h3>
+          </div>
+          <span class="status-pill">Offline</span>
+        </header>
+
+        <div class="session-meta">
+          <span>Conversation</span>
+          <code class="conversation-id">Not started</code>
+        </div>
+
+        <div class="transcript" aria-live="polite">
+          <p class="transcript-placeholder">Start a text or voice session.</p>
+        </div>
+
+        <form class="message-form">
+          <input class="message-input" type="text" placeholder="Type as this carrier…" />
+          <button class="button send" type="submit">Send</button>
+        </form>
+
+        <div class="scenario-buttons">
+          <button class="chip quote-scenario" type="button"></button>
+          <button class="chip sync-scenario" type="button">Ask agent to check market</button>
+        </div>
+
+        <div class="call-actions">
+          <button class="button start-text" type="button">Start text</button>
+          <button class="button secondary start-voice" type="button">Start voice</button>
+          <button class="button secondary talk-here" type="button" hidden>Talk here</button>
+          <button class="button danger end-call" type="button" hidden>End</button>
+        </div>
+      </article>
+    </template>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

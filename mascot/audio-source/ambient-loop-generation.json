@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-07-19T02:08:34.755Z",
+  "generator": "ElevenLabs",
+  "note": "The API credential was read from the process environment and is not stored in this manifest.",
+  "generations": [
+    {
+      "name": "ambient-loop-candidate",
+      "endpoint": "sound-generation",
+      "filename": "ambient-loop.candidate.raw.mp3",
+      "bytes": 384984,
+      "output_format": "mp3_44100_128",
+      "request": {
+        "text": "Seamless 24-second instrumental ambient music loop for a tiny friendly floating companion. 80 BPM, D-major pentatonic, warm breathing analog pad, sparse felted-glass notes, soft rounded pulse, delicate airy levitation texture. Minimal, calm, premium, quietly playful, constant low energy. No intro, outro, fade, fill, cadence, final chord, drums, vocals, glitch, alarm, metal, harsh bass, or cinematic impact.",
+        "loop": true,
+        "duration_seconds": 24,
+        "prompt_influence": 0.62,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "response": {
+        "song_id": null,
+        "character_cost": "132",
+        "request_id": null
+      }
+    }
+  ]
+}

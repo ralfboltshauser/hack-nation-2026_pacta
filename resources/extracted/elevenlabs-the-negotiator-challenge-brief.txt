@@ -1,0 +1,333 @@
+             In collaboration with MIT Club of Northern California and MIT Club of Germany
+
+
+
+
+                     01
+                                      CHALLENGE
+
+
+
+
+                                      ····················
+
+
+
+
+                 The Negotiator
+Voice agents that call, compare, and haggle — pick your market, never overpay
+                                     again
+
+
+
+
+                                       POWERED BY
+
+
+
+
+                                       ElevenLabs ​
+                (The AI Audio and Voice Agents Platform)
+                      THE NEGOTIATOR · ELEVENLABS × Hack-Nation · Challenge Brief
+
+
+
+
+Goals and Motivation
+Meet Daniel
+
+Daniel is 34, has just signed a lease in Charlotte, and is sitting on the floor of his apartment in Rock
+Hill, 45 miles away, on a Sunday evening — three weeks to moving day, a two-bedroom flat around
+him, phone in hand.
+
+The market knows quite a lot about what this move should cost. Real quotes collected for exactly this
+move — Rock Hill to Charlotte, 45 miles, standard service — ranged from $1,158 to $6,506. A 5.6x
+spread for identical work. Somewhere in that range is a fair price, and the only way to find it is to call
+five to eight small moving companies, describe the same apartment in detail each time, sit through the
+hold music, compare fee structures that are deliberately hard to compare, and negotiate.
+
+Almost nobody does this.
+
+So Daniel does what most people do: he calls two companies, takes a sight-unseen phone quote from
+the friendlier one, and hopes. FMCSA data shows how that ends — estimates given without seeing
+the shipment are 40% more likely to produce a final bill above the original quote. On moving day, the
+stairs cost extra. So does the “long carry”. The price on the truck is not the price on the phone.
+
+This is not an information problem in the classic sense. The prices exist. The red flags are
+documented. Industry guidance even tells consumers exactly what to do: gather multiple quotes, and
+treat anything 30% below the competition as a warning sign. What is missing is anyone with the time
+and stamina to extract those numbers, one phone call at a time.
+
+That gap — between the price Daniel will pay and the price he could have paid — is what this
+challenge asks you to close. Not just for moving: for whichever phone-priced market you choose, B2C
+or B2B — medical bills, car buying, contractor bids, freight, equipment rental. For the first time,
+software can literally pick up the phone.
+
+Current challenges
+Every phone-priced market shows the same pattern; moving is simply the best documented. A $20B+,
+deeply fragmented US industry — 16,851 companies averaging just 6.2 employees, serving roughly
+28 million Americans who move every year — made of phone-and-paper operations, not tech
+businesses with instant online quotes. Swap in car repair, medical billing, or subcontractor bids and
+the same three failures repeat:
+
+
+  OPAQUE PRICING                  Quotes for the same 45-mile move range from $1,158 to $6,506 — a 5.6x spread for
+                                  identical work. The only sanity check available to a consumer is gathering multiple
+                                  quotes, and there is no efficient way to do it today.
+
+
+  UNRELIABLE ESTIMATES            Sight-unseen estimates — which is what most phone quotes are — are 40% more
+                                  likely to end in a final bill above the original quote (FMCSA). Lowball-then-upcharge is
+                                  a business model, not an accident.
+
+
+  NO WAY TO SHOP AROUND           The market is 16,851 small companies reachable one phone call at a time. The BBB
+                                  logs 13,000+ complaints against movers every year, largely over unexpected price
+                                  hikes — yet almost nobody has the hours to call 5–8 operators and compare properly.
+
+
+
+
+     Hack-Nation × MIT Club of Northern California × MIT Club of Germany · 6th Global AI Hackathon · Page 2
+                     THE NEGOTIATOR · ELEVENLABS × Hack-Nation · Challenge Brief
+
+
+
+Your Challenge
+Build THE NEGOTIATOR — a working end-to-end MVP of a voice-agent system that, for a vertical of
+your choice, gathers real prices by phone, reports them in comparable form, and negotiates the best
+deal. B2C or B2B is up to you: moving, medical bills, car buying, contractor bids, freight, equipment
+rental, wedding vendors — pick the market where you see the biggest need and can prove the pain
+with real numbers.
+Whatever the vertical, the system always has the same three beats. First, intake: build a complete,
+structured specification of the job — through a voice interview, through documents the user already
+has (photos, existing quotes, bills, inventory lists), or both. Second, the calls: your agent phones the
+market — whether real businesses, humans role-playing, or counter-agents you build — describes the
+job identically every time, and extracts itemised quotes. Third,
+the close: it negotiates — leveraging one bid against another, questioning fees, flagging suspicious
+outliers — and reports back with a ranked, evidence-backed comparison: call recordings, transcripts,
+and a recommended deal explained in plain language. Price gathering, reporting, and negotiation are
+all mandatory; the vertical is yours.
+Conversation design is as much part of the challenge as the technology. How your agent handles a
+gruff dispatcher, a “we don’t give prices over the phone”, or a hard sell determines whether it comes
+back with a usable quote or a useless range.
+
+
+
+   A negotiator — not a quote form
+   Your solution must conduct real voice conversations, not fill web forms or scrape aggregators. The
+   other end of the line is flexible: bring a real problem you are facing right now and let the agent make
+   real calls; answer the calls yourself, playing different counterparts — the tough negotiator, the
+   stonewaller, the upseller; or build counterparty agents and run agent-to-agent. All are fine, as long as
+   you can simulate several distinct negotiation types and prices move during the call because of what
+   your agent knows and says. Vertical-specific parameters (job-spec taxonomy, price benchmarks,
+   red-flag rules, negotiation levers) should be configuration, not code: switching your system from
+   movers to auto body shops should mean swapping a config file, not rewriting your agents.
+
+
+
+
+Build all three of these modules:
+   01 The Estimator — Intake by Interview or Documents
+   An intake agent builds a complete, structured job specification — the thing that makes a later quote
+   binding rather than bait. Two intake paths, and strong submissions offer both: a voice interview that
+   asks what a professional estimator would ask, and document intake — photos, existing quotes, bills,
+   inventory lists — parsed into the same structured spec. In moving that spec is rooms, large items, and
+   stairs; in medical billing it is the itemised bill; in construction it is the scope of work. The user confirms
+   the spec before any calls are made. This is the direct attack on the sight-unseen problem: incomplete
+   intakes are why estimates blow up 40% of the time.
+   Required: Intake must offer a voice interview built on ElevenLabs Agents plus at least one document
+   type; both paths must produce the same structured job spec (e.g. JSON), confirmed by the user and
+   reused verbatim across every call.
+
+
+
+
+    Hack-Nation × MIT Club of Northern California × MIT Club of Germany · 6th Global AI Hackathon · Page 3
+                      THE NEGOTIATOR · ELEVENLABS × Hack-Nation · Challenge Brief
+
+
+
+
+   02 The Caller — Parallel Quote Gathering
+   Your agent phones the market. How the other end answers is up to you — three setups are all valid:
+   (1) real calls — point the agent at a problem you are actually facing this month and let it phone real
+   businesses via Twilio/SIP; (2) human-in-the-loop — answer the calls yourself, playing distinct
+   counterparts: the tough negotiator, the lowballer with hidden fees, the hard-sell upseller; (3) simulated
+   market — build counterparty agents and run agent-to-agent. Whatever the setup, the caller must
+   describe the job consistently, handle friction (interruptions, evasive answers, “someone will call you
+   back”), and extract an itemised, comparable quote from each call. Use batch calling or parallel
+   sessions where you can — and show where the call list would come from in the real world (e.g.
+   Google Places or Yelp business data).
+   Required: Any counterparty setup is allowed — real businesses, humans role-playing, or built
+   counter-agents — but your demo must show live calls against at least three distinct negotiation styles,
+   every quote captured in structured, comparable form with fees itemised.
+
+
+
+
+   03 The Closer — Negotiation & Reporting
+   With quotes in hand, your agent negotiates: it leverages competing bids (“I have a binding quote for
+   $1,850 — can you beat it?”), pushes on fees, asks for price-matching or extras, and applies red-flag
+   rules — any quote 30%+ below market is a warning sign, not a win. Then it reports: a ranked
+   comparison the user can trust, with a recommended deal, full transcripts and recordings, itemised fee
+   breakdowns, and a plain-language explanation of why.
+   Required: At least one demonstrated negotiation in which the price or terms change during the call
+   because of leverage your agent gathered; the final report must rank all quotes and cite transcript
+   evidence.
+
+
+
+
+The Conversation Requirement
+Voice is not a skin on a chatbot; it is the mechanism of trust on both ends of the call. Your prototype
+must address the following explicitly:
+ • Who is the agent speaking for? Does it disclose that it is an AI calling on behalf of a customer?
+    How does it respond to “am I talking to a robot?” — gracefully, honestly, and without losing the
+    quote?
+ • How does it survive friction? Busy dispatchers interrupt, answer vaguely, and multitask. Latency,
+    barge-in handling, and turn-taking decide whether the call sounds like a serious buyer or a bot.
+ • Where does the honesty line sit? The agent may use competing quotes as leverage — but it must
+    never invent inventory, fake a bid, or misrepresent the job. Show how you constrain it.
+ • How does every call end? With a structured outcome: an itemised quote, a callback commitment,
+    or a documented decline — never a vague “they said around two thousand”.
+ Play the calls in your demo and highlight how you addressed these four points.
+
+
+
+Data Sources and Hints
+Your agents should be grounded in real market data and live voice infrastructure — not canned audio.
+You are encouraged to build on the resources below, adapted to the vertical you choose.
+
+
+
+
+     Hack-Nation × MIT Club of Northern California × MIT Club of Germany · 6th Global AI Hackathon · Page 4
+                     THE NEGOTIATOR · ELEVENLABS × Hack-Nation · Challenge Brief
+
+
+
+
+ VOICE AGENTS &
+ TELEPHONY
+
+ ElevenLabs Agents Platform          Build and orchestrate the conversational agents — system prompts, tools,
+                                     knowledge bases, agent transfer, and human handoff. (elevenlabs.io/docs)
+
+
+ Batch Calling / Twilio & SIP        Run parallel outbound calls at scale; native Twilio integration and SIP trunking
+                                     make real phone calls possible if you want to go beyond simulation.
+
+
+ Agent Tools & MCP                   Give your agents tools to log structured quotes mid-call, look up price
+                                     benchmarks, and write results into your comparison backend.
+
+
+ MARKET DISCOVERY &
+ PRICING DATA
+
+ Google Places / Yelp Fusion /       Find the counterparties: business phone numbers, categories, opening hours,
+ OSM                                 ratings, and review volume by location — your call list, built programmatically
+                                     instead of by hand.
+
+
+ Vertical price benchmarks           Ground truth for red-flag detection, per vertical — e.g. FMCSA & moveBuddha
+                                     (moving), FAIR Health & hospital price-transparency files (medical), RepairPal
+                                     (auto repair), KBB (car buying), published rate cards (freight, equipment rental).
+
+
+ Document parsing                    Turn what the user already has — photos, existing quotes, bills, inventory PDFs
+                                     — into the structured job spec, using vision models or OCR. Same schema as
+                                     the interview output.
+
+
+ THE OTHER END OF THE
+ LINE
+
+ Counterparty options                Three valid setups, any mix: real calls to a problem you actually face right now;
+                                     yourself on the line role-playing distinct counterparts (tough negotiator,
+                                     stonewaller, upseller); or built counter-agents with different pricing strategies.
+                                     Cover several negotiation types.
+
+
+ Golden calls & eval sets            Record reference negotiations and build simple evals: does the agent extract
+                                     every fee? Does it catch the 30%-below-market red flag? Use these to iterate
+                                     on your prompts.
+
+
+
+
+What Makes a Strong Submission
+
+ Strong Submissions...                                        Weak Submissions...
+ — Show a real negotiation. Demonstrate a price               — Stage a screenplay. Two agents reading pre-written
+ moving during a live call — against a real business, a       dialogue at each other is a demo of text-to-speech, not
+ role-playing human, or a counter-agent — because of          of negotiation.
+ leverage your agent gathered, not because the script
+ said so.
+
+
+
+
+   Hack-Nation × MIT Club of Northern California × MIT Club of Germany · 6th Global AI Hackathon · Page 5
+                       THE NEGOTIATOR · ELEVENLABS × Hack-Nation · Challenge Brief
+
+
+
+
+  — Pick a provable pain. Choose a vertical where you           — Pick a vertical because it sounds cool, collect prices
+  can show the spread with real numbers — then make             that aren’t comparable, and hide the differences in a
+  quotes comparable: same job, same services, itemised          polished dashboard.
+  fees.
+
+
+  — Close the loop. Intake → calls → negotiation →              — Over-engineer the agent stack and under-engineer
+  ranked recommendation with transcript evidence. A             the conversations. This challenge is won in call design,
+  connected flow beats a polished fragment.                     not model architecture.
+
+
+  — Be honest about the hard parts. AI disclosure,              — Let the agent bluff. Invented inventory or a fake
+  honesty constraints, and failure modes (hang-ups,             competing bid may win $200 in the demo — and lose
+  refusals to quote) handled gracefully build trust.            the user, and the market, forever.
+
+
+
+
+Success Criteria
+  A submission fully meets this challenge when:
+  • The loop is closed. A single vertical runs end to end: intake → calls → negotiation → ranked
+  recommendation with transcript evidence.
+  • One structured job spec, built by voice interview and at least one document type, is confirmed by the user
+  and reused verbatim across every call.
+  • Live calls are demonstrated against at least three distinct negotiation styles; every quote is captured in
+  structured, comparable form with fees itemised.
+  • At least one negotiation shows the price or terms measurably change during the call because of leverage
+  the agent gathered — not because the script said so.
+  • AI disclosure and honesty constraints hold: the agent never invents inventory or a fake bid, discloses it is
+  an AI when asked, and handles friction (hang-ups, refusals, “are you a robot?”) gracefully.
+  • Every call ends in a structured outcome — an itemised quote, a callback commitment, or a documented
+  decline.
+  • The final report ranks all quotes, cites recordings and transcripts, and explains the recommended deal in
+  plain language.
+
+
+
+Why This Matters
+The consumer harm is documented, not hypothetical: the BBB logs over 13,000 complaints and
+negative reviews against movers every year, largely over unexpected price hikes; “hostage load”
+cases — belongings held until the customer pays more — have nearly tripled since 2017; final bills
+are routinely inflated 30%+ through added fees; and moving prices have risen roughly 21% recently
+on fuel costs alone. Consumers have more reason than ever to shop around, and no time in which to
+do it.
+For ElevenLabs, this is the thesis in miniature: a $20B+ market that runs on the telephone, where
+16,851 small operators will never adopt quoting software — but every one of them answers the
+phone. A voice agent is the first technology that meets this market where it is, with no integration
+required on the other end. And moving is only the beachhead: the same system generalises to
+contractors, auto repair, storage, and medical bills — every market where the real price is only
+available by phone, to whoever has the patience to ask for it.
+
+
+
+
+     Hack-Nation × MIT Club of Northern California × MIT Club of Germany · 6th Global AI Hackathon · Page 6
+

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#e8e8e8" />
+    <meta
+      name="description"
+      content="Orbit and animate the Pacta character, reconstructed as an editable Blender model from a single reference image."
+    />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Pacta Character — Interactive 3D</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="studio" id="studio">
+        <img
+          class="poster"
+          id="poster"
+          src="/assets/blender-front.png?v=2"
+          alt="Pacta character rendered in Blender"
+        />
+        <canvas
+          id="character-canvas"
+          aria-label="Interactive 3D model of the Pacta character. Drag to orbit and scroll to zoom."
+        ></canvas>
+        <div class="studio-glow" aria-hidden="true"></div>
+      </div>
+
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Pacta Character home">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 28 28" role="presentation">
+              <path d="M7.4 6.7 9.1 3.8l2.1 2.1a12 12 0 0 1 5.6 0l2.1-2.1 1.7 2.9A7.5 7.5 0 0 1 24 13v3.4a7.6 7.6 0 0 1-7.6 7.6h-4.8A7.6 7.6 0 0 1 4 16.4V13a7.5 7.5 0 0 1 3.4-6.3Z" />
+              <rect x="7.2" y="8.1" width="13.6" height="11.4" rx="4.2" />
+              <path d="M11 12.2v2.2m6-2.2v2.2m-6.3 2.1c2.2 1.9 4.4 1.9 6.6 0" />
+            </svg>
+          </span>
+          <span class="brand-copy">
+            <strong>Pacta</strong>
+            <span>Character study / 001</span>
+          </span>
+        </a>
+
+        <nav class="actions" aria-label="Downloads and information">
+          <button class="button button-quiet mobile-hidden" id="about-button" type="button">
+            Process
+          </button>
+          <a class="button button-quiet mobile-hidden" href="/downloads/HOW_IT_WAS_MADE.md?v=4" download>
+            Guide <span class="filetype">.md</span>
+          </a>
+          <a class="button button-primary" href="/downloads/pacta-character.blend?v=2" download>
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M10 2.5v9m0 0 3.2-3.2M10 11.5 6.8 8.3M3.5 13v2A1.5 1.5 0 0 0 5 16.5h10a1.5 1.5 0 0 0 1.5-1.5v-2" />
+            </svg>
+            Blender file
+          </a>
+        </nav>
+      </header>
+
+      <section class="model-meta" aria-label="Model information">
+        <span class="eyebrow">Interactive artifact</span>
+        <h1>A small character,<br />built from one image.</h1>
+        <p>Real geometry. Studio-lit and alive in real time.</p>
+      </section>
+
+      <section class="motion-dock" aria-label="Character animations">
+        <div class="motion-status" aria-live="polite" aria-atomic="true">
+          <span class="motion-status-dot" aria-hidden="true"></span>
+          <span id="motion-status">Loading gestures</span>
+        </div>
+        <div class="motion-actions">
+          <button class="motion-button" type="button" data-motion="happy" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6.4 11.5c1.1 4 3 5.8 5.6 5.8s4.5-1.8 5.6-5.8M8 8.2h.1M15.9 8.2h.1" />
+            </svg>
+            <span>Happy</span>
+          </button>
+          <button class="motion-button" type="button" data-motion="wave" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9.2 18.5v-8.2a1.4 1.4 0 0 1 2.8 0v3.1-6a1.4 1.4 0 0 1 2.8 0v6-4.1a1.4 1.4 0 0 1 2.8 0v5.2c0 4-2.4 6-5.8 6h-.5a5.6 5.6 0 0 1-4.2-2l-2.5-3a1.4 1.4 0 0 1 .2-2 1.5 1.5 0 0 1 2 .1l2.4 2.2" />
+            </svg>
+            <span>Wave</span>
+          </button>
+          <button class="motion-button" type="button" data-motion="spin" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M19.2 8.1A8 8 0 1 0 20 14m-.8-5.9h-4.1m4.1 0V4" />
+            </svg>
+            <span>Spin</span>
+          </button>
+          <button class="motion-button" type="button" data-motion="curious" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9.4 9.1A3 3 0 0 1 12.3 7c1.8 0 3.2 1.1 3.2 2.7 0 2.4-2.8 2.4-2.8 4.4M12.7 17.6h.1" />
+            </svg>
+            <span>Curious</span>
+          </button>
+        </div>
+      </section>
+
+      <div class="viewer-tools" aria-label="3D viewer controls">
+        <div class="interaction-hint" id="interaction-hint">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8.5 11.5V7.8a1.5 1.5 0 0 1 3 0v2.7-5a1.5 1.5 0 0 1 3 0v5-3.2a1.5 1.5 0 0 1 3 0v4.2-2a1.5 1.5 0 0 1 3 0v4.2c0 4.3-2.7 7-6.7 7h-.7a6 6 0 0 1-4.6-2.2L5 14.2a1.6 1.6 0 0 1 .2-2.3 1.7 1.7 0 0 1 2.3.1l1 1.1" />
+          </svg>
+          <span><strong>Drag</strong> to orbit <i></i> <strong>Scroll</strong> to zoom</span>
+        </div>
+        <button class="icon-button audio-toggle" id="sound-button" type="button" aria-label="Start sound" aria-pressed="false" title="Start sound">
+          <svg class="sound-on-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 9.3h3.2L12.5 6v12l-4.3-3.3H5V9.3Z" />
+            <path d="M15.5 9.1a4 4 0 0 1 0 5.8M18 6.8a7.1 7.1 0 0 1 0 10.4" />
+          </svg>
+          <svg class="sound-off-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 9.3h3.2L12.5 6v12l-4.3-3.3H5V9.3ZM16 9l5 6m0-6-5 6" />
+          </svg>
+        </button>
+        <button class="icon-button" id="reset-button" type="button" aria-label="Reset to front view" title="Reset to front view (R)">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4.9 8.2A8 8 0 1 1 4 14m.9-5.8H9m-4.1 0V4" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="load-state" id="load-state" role="status" aria-live="polite">
+        <span class="load-dot"></span>
+        <span id="load-copy">Preparing character</span>
+        <span class="load-percent" id="load-percent">0%</span>
+      </div>
+
+      <button class="mobile-process" id="mobile-about-button" type="button">About this build</button>
+
+      <dialog class="process-panel" id="process-panel" aria-labelledby="process-title">
+        <div class="panel-head">
+          <div>
+            <span class="eyebrow">From pixels to a model</span>
+            <h2 id="process-title">How this was made</h2>
+          </div>
+          <button class="icon-button" id="close-panel" type="button" aria-label="Close process panel">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
+        </div>
+        <div class="panel-body">
+          <p class="panel-intro">
+            One 332 × 301 reference image was measured, reconstructed as smooth
+            parametric forms in Blender, then calibrated against repeated renders.
+          </p>
+          <ol class="process-list">
+            <li><span>01</span><div><strong>Measure</strong><p>Extract silhouette, feature bounds, spacing, and exact background color from the source pixels.</p></div></li>
+            <li><span>02</span><div><strong>Model</strong><p>Build the shell and display as superellipsoids, sculpt the ears into the crown, then add eyes, smile, and detached side pods.</p></div></li>
+            <li><span>03</span><div><strong>Match</strong><p>Use an orthographic camera and broad studio lights. Render, overlay, measure error, and adjust one controlled parameter at a time.</p></div></li>
+            <li><span>04</span><div><strong>Translate</strong><p>Export real geometry to glTF and reproduce the view-dependent Blender materials in Three.js so highlights still move when you orbit.</p></div></li>
+            <li><span>05</span><div><strong>Animate</strong><p>Layer idle, gaze, expressions, and gestures on separate pivots, then use velocity-preserving springs so rapid input redirects without snapping.</p></div></li>
+            <li><span>06</span><div><strong>Sound</strong><p>Generate a restrained ambient bed and gesture cues, master them as static assets, then trigger each cue only when its animation truly starts.</p></div></li>
+          </ol>
+        </div>
+        <div class="panel-footer">
+          <a class="button button-primary" href="/downloads/HOW_IT_WAS_MADE.md?v=4" download>Download the full guide <span class="filetype">.md</span></a>
+          <span>Includes the reusable prompt recipe</span>
+        </div>
+      </dialog>
+
+      <noscript>This interactive model needs JavaScript enabled.</noscript>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

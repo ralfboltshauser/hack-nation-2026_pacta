@@ -1,0 +1,95 @@
+{
+  "generated_at": "2026-07-19T02:02:54.808Z",
+  "generator": "ElevenLabs",
+  "note": "The API credential was read from the process environment and is not stored in this manifest.",
+  "generations": [
+    {
+      "name": "ambient-music",
+      "endpoint": "music",
+      "filename": "ambient-music.raw.mp3",
+      "bytes": 384567,
+      "output_format": "mp3_44100_128",
+      "request": {
+        "prompt": "A 24-second instrumental ambient background piece for a tiny friendly floating companion in a bright minimal studio. 80 BPM, D-major pentatonic, intimate and weightless. Use a warm breathing analog pad, very sparse felted glass-mallet notes, a soft rounded sub pulse, and delicate airy texture that gently rises and falls like levitation. Minimal, premium, calm and quietly playful; lots of space and no foreground melody. Keep identical energy and harmonic color throughout, without intro, outro, fill, final chord, cadence, or reverb cutoff, so the endpoints can be crossfaded into a seamless loop. Shared palette: soft silicone, silky air, frosted-glass notes, and rounded D-major synth chirps. No vocals, drums, glitch, alarms, lasers, harsh metallic sounds, aggressive bass, or cinematic impact.",
+        "music_length_ms": 24000,
+        "model_id": "music_v2",
+        "force_instrumental": true
+      },
+      "response": null,
+      "reused_existing": true
+    },
+    {
+      "name": "happy",
+      "endpoint": "sound-generation",
+      "filename": "happy.raw.mp3",
+      "bytes": 19688,
+      "output_format": "mp3_44100_128",
+      "request": {
+        "text": "Polished 1.18-second happy-jiggle one-shot for a tiny friendly floating companion. Start immediately with muted silicone compression, spring into a warm two-note D-major glass chirp, then three diminishing rounded bounce ticks. Light airy lift, tactile and buoyant, fully settled at the end. Palette: soft silicone, silky air, frosted-glass notes, and rounded D-major synth chirps. No speech, laser, arcade sound, metal impact, boom, or long reverb.",
+        "loop": false,
+        "duration_seconds": 1.18,
+        "prompt_influence": 0.72,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "response": null,
+      "reused_existing": true
+    },
+    {
+      "name": "wave",
+      "endpoint": "sound-generation",
+      "filename": "wave.raw.mp3",
+      "bytes": 26793,
+      "output_format": "mp3_44100_128",
+      "request": {
+        "text": "Polished 1.62-second wave one-shot for a tiny floating companion. Start immediately with a lift, then three silky rounded air swishes with diminishing energy. Finish with a tiny D-major wink ping and cushioned return. Friendly, understated, tactile, stereo but mono-compatible. Palette: soft silicone, silky air, frosted-glass notes, and rounded D-major synth chirps. No speech, servo whine, metal, laser, whistle, or long tail.",
+        "loop": false,
+        "duration_seconds": 1.62,
+        "prompt_influence": 0.72,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "response": {
+        "song_id": null,
+        "character_cost": "9",
+        "request_id": null
+      }
+    },
+    {
+      "name": "spin",
+      "endpoint": "sound-generation",
+      "filename": "spin.raw.mp3",
+      "bytes": 24703,
+      "output_format": "mp3_44100_128",
+      "request": {
+        "text": "Polished 1.48-second joyful 360-spin one-shot. Start immediately with a soft reverse wind-up and silicone compression; launch one rounded orbital air whoosh circling across stereo; land on a cushioned D-major pluck with two tiny elastic settle taps. Exciting but gentle. Palette: soft silicone, silky air, frosted-glass notes, and rounded D-major synth chirps. No jet, engine, laser, glitch, hard metal, boom, or cartoon spin.",
+        "loop": false,
+        "duration_seconds": 1.48,
+        "prompt_influence": 0.72,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "response": {
+        "song_id": null,
+        "character_cost": "8",
+        "request_id": null
+      }
+    },
+    {
+      "name": "curious",
+      "endpoint": "sound-generation",
+      "filename": "curious.raw.mp3",
+      "bytes": 25539,
+      "output_format": "mp3_44100_128",
+      "request": {
+        "text": "Polished 1.55-second curious-tilt one-shot. Start immediately with silky movement and a felted-glass D; rise to E like a question; add a soft bubble-pluck for the nod; resolve gently to D and settle. Intimate, tender, restrained. Palette: soft silicone, silky air, frosted-glass notes, and rounded D-major synth chirps. No speech, animal sound, glitch, alarm, laser, metal servo, arcade beep, or long reverb.",
+        "loop": false,
+        "duration_seconds": 1.55,
+        "prompt_influence": 0.72,
+        "model_id": "eleven_text_to_sound_v2"
+      },
+      "response": {
+        "song_id": null,
+        "character_cost": "9",
+        "request_id": null
+      }
+    }
+  ]
+}

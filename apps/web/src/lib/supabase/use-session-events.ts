@@ -1,0 +1,152 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+import type { SessionView } from "../session-view";
+import {
+  contiguousEventSequence,
+  hasEventGap,
+  mergeSessionEvents,
+  normalizeSessionEvent,
+  type RealtimeSessionEvent,
+} from "./event-buffer";
+import { ensureSessionAccess } from "./session-access";
+
+const replayPageSize = 500;
+
+export function useSessionEvents(sessionId?: string) {
+  const [events, setEvents] = useState<RealtimeSessionEvent[]>([]);
+  const [view, setView] = useState<SessionView | null>(null);
+  const [status, setStatus] = useState<
+    "demo" | "connecting" | "live" | "error"
+  >(sessionId ? "connecting" : "demo");
+
+  useEffect(() => {
+    if (!sessionId) return;
+    const activeSessionId = sessionId;
+    type RealtimeClient = Awaited<
+      ReturnType<typeof ensureSessionAccess>
+    >["supabase"];
+    let realtimeClient: RealtimeClient | undefined;
+    let cancelled = false;
+    let channel: ReturnType<RealtimeClient["channel"]> | undefined;
+    let buffer: RealtimeSessionEvent[] = [];
+    let replayQueue = Promise.resolve();
+    let replayHealthy = true;
+    let viewRefresh: ReturnType<typeof setTimeout> | undefined;
+
+    function publish(incoming: RealtimeSessionEvent[]) {
+      buffer = mergeSessionEvents(buffer, incoming);
+      if (!cancelled) setEvents(buffer);
+    }
+
+    async function connect() {
+      const access = await ensureSessionAccess(activeSessionId);
+      realtimeClient = access.supabase;
+      const authHeaders = access.headers;
+
+      async function refreshView() {
+        const response = await fetch(`/api/sessions/${activeSessionId}/view`, {
+          headers: authHeaders,
+        });
+        if (!response.ok)
+          throw new Error(`Session projection failed (${response.status}).`);
+        if (!cancelled) setView((await response.json()) as SessionView);
+      }
+
+      function scheduleViewRefresh(immediate = false) {
+        if (viewRefresh) clearTimeout(viewRefresh);
+        viewRefresh = setTimeout(
+          () => {
+            refreshView().catch(() => !cancelled && setStatus("error"));
+          },
+          immediate ? 0 : 80,
+        );
+      }
+
+      async function replayFrom(after: number) {
+        let cursor = after;
+        for (;;) {
+          const replay = await fetch(
+            `/api/sessions/${activeSessionId}/events?after=${cursor}`,
+            { headers: authHeaders },
+          );
+          if (!replay.ok)
+            throw new Error(`Event replay failed (${replay.status}).`);
+          const body = (await replay.json()) as {
+            events: Record<string, unknown>[];
+            nextAfter: number;
+          };
+          const page = body.events
+            .map(normalizeSessionEvent)
+            .filter((event): event is RealtimeSessionEvent => Boolean(event));
+          publish(page);
+          if (page.length < replayPageSize || body.nextAfter <= cursor) break;
+          cursor = body.nextAfter;
+        }
+      }
+
+      function queueCandidate(candidate?: RealtimeSessionEvent) {
+        replayQueue = replayQueue
+          .then(async () => {
+            if (
+              candidate &&
+              candidate.eventSeq <= contiguousEventSequence(buffer)
+            )
+              return;
+            if (
+              candidate &&
+              candidate.eventSeq === contiguousEventSequence(buffer) + 1
+            ) {
+              publish([candidate]);
+              return;
+            }
+            await replayFrom(contiguousEventSequence(buffer));
+            if (
+              candidate &&
+              !buffer.some((event) => event.eventSeq === candidate.eventSeq)
+            )
+              publish([candidate]);
+            if (hasEventGap(buffer))
+              throw new Error(
+                "Durable event replay did not repair a Broadcast sequence gap.",
+              );
+            scheduleViewRefresh();
+          })
+          .catch(() => {
+            replayHealthy = false;
+            if (!cancelled) setStatus("error");
+          });
+      }
+
+      channel = realtimeClient
+        .channel(`session:${activeSessionId}`, { config: { private: true } })
+        .on("broadcast", { event: "*" }, (message) => {
+          const candidate = normalizeSessionEvent(
+            (message.payload ?? message) as Record<string, unknown>,
+          );
+          if (!candidate) return;
+          queueCandidate(candidate);
+        })
+        .subscribe((nextStatus) => {
+          if (nextStatus === "SUBSCRIBED") {
+            queueCandidate();
+            scheduleViewRefresh(true);
+            replayQueue.then(
+              () => !cancelled && replayHealthy && setStatus("live"),
+            );
+          }
+          if (nextStatus === "CHANNEL_ERROR" || nextStatus === "TIMED_OUT")
+            setStatus("error");
+        });
+    }
+    connect().catch(() => !cancelled && setStatus("error"));
+    return () => {
+      cancelled = true;
+      if (viewRefresh) clearTimeout(viewRefresh);
+      if (channel && realtimeClient) void realtimeClient.removeChannel(channel);
+    };
+  }, [sessionId]);
+
+  return { events, status, view };
+}

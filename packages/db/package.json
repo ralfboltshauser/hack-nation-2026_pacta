@@ -1,0 +1,32 @@
+{
+  "name": "@pacta/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "generate": "drizzle-kit generate",
+    "lint": "eslint src drizzle.config.ts",
+    "migrate": "tsx src/migrate.ts",
+    "test": "vitest run",
+    "test:integration": "vitest run src/integration.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pacta/core": "workspace:*",
+    "@pacta/use-case-config": "workspace:*",
+    "drizzle-orm": "0.45.2",
+    "postgres": "3.4.9"
+  },
+  "devDependencies": {
+    "dotenv": "17.4.2",
+    "drizzle-kit": "0.31.10",
+    "tsx": "4.23.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

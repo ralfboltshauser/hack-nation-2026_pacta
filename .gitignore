@@ -1,0 +1,39 @@
+# Secrets and local configuration
+
+# Dependencies and generated build output
+node_modules/
+dist/
+build/
+coverage/
+.cache/
+.next/
+.turbo/
+*.tsbuildinfo
+__pycache__/
+*.py[cod]
+
+# Provider and deployment linkage
+.vercel/
+.supabase/
+.stripe/
+
+# Local E2E and provider evidence
+playwright-report/
+test-results/
+recordings/
+provider-payloads/
+docs/milestones/evidence/private/
+experiments/**/bin/
+
+# Local tooling and OS files
+*.log
+.DS_Store
+
+.projects/cache
+.projects/vault
+.projects/state.test.json
+.projects/state.local.test.json
+.projects/state.local.json
+.env
+.env.*
+!.env.example

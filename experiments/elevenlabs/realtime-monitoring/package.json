@@ -1,0 +1,13 @@
+{
+  "name": "@negotiator/experiment-elevenlabs-realtime-monitoring",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}
+

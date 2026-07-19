@@ -1,0 +1,23 @@
+{
+  "name": "elevenlabs-shared-state-negotiation-proof",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild browser/app.js --bundle --format=esm --platform=browser --target=es2022 --outfile=public/app.js",
+    "dev": "node dev.mjs",
+    "server": "node server.mjs",
+    "setup": "node setup-elevenlabs.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "prove": "node prove.mjs",
+    "restore": "node restore-elevenlabs.mjs"
+  },
+  "dependencies": {
+    "@elevenlabs/client": "1.15.1",
+    "express": "5.1.0",
+    "ws": "8.21.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.8"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": [
+    "AI_GATEWAY_API_KEY",
+    "DATABASE_URL",
+    "DIRECT_URL",
+    "ELEVENLABS_API_KEY",
+    "ELEVENLABS_CUSTOMER_AGENT_ID",
+    "ELEVENLABS_CUSTOM_LLM_SECRET",
+    "ELEVENLABS_PHONE_NUMBER_ID",
+    "ELEVENLABS_SUPPLIER_AGENT_ID",
+    "ELEVENLABS_WEBHOOK_SECRET",
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "PACTA_BRAIN_MODE",
+    "PACTA_BRAIN_MODEL",
+    "PACTA_DEMO_ACCESS_KEY",
+    "PACTA_OUTBOUND_CALLS_ENABLED",
+    "SUPABASE_SECRET_KEY",
+    "TEST_DATABASE_URL"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "outputs": ["coverage/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "outputs": ["*.tsbuildinfo"]
+    }
+  }
+}

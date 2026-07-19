@@ -1,0 +1,4 @@
+*.blend1
+audio-source/analysis/
+web/.vercel/
+web/artifacts/
