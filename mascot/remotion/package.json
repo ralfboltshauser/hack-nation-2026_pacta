@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "render": "remotion render src/index.jsx PactaSpin assets/.pacta-bot-spin-remotion.webm --codec=vp8 --pixel-format=yuva420p --image-format=png --video-bitrate=8M --concurrency=1 --chromium-angle=swiftshader --quiet && ffmpeg -v error -i assets/.pacta-bot-spin-remotion.webm -map 0:v:0 -c:v copy -an -y assets/pacta-bot-spin-transparent.webm && rm -f assets/.pacta-bot-spin-remotion.webm",
+    "render:markets": "remotion render src/index.jsx PactaMarkets ../../presentations/pacta-case-pitch/renders/pacta-markets-bento.mp4 --codec=h264 --crf=14 --pixel-format=yuv420p --muted --chromium-angle=swiftshader --quiet",
     "render:white": "remotion render src/index.jsx PactaSpinWhite assets/pacta-bot-spin-white.mp4 --codec=h264 --crf=14 --pixel-format=yuv420p --image-format=png --muted --concurrency=1 --chromium-angle=swiftshader --quiet"
   },
   "dependencies": {
