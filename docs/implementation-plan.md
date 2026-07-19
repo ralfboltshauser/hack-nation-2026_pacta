@@ -798,9 +798,10 @@ The Custom LLM endpoint authenticates every turn with a random, hashed,
 expiring `brain_token` scoped to the exact workspace, session, conversation,
 purpose, and negotiation. The token is delivered in ElevenLabs'
 `elevenlabs_extra_body`; an invalid or expired capability is rejected before
-model generation. Do not attach an ElevenLabs workspace API-key secret to the
-Custom LLM—the provider failed before making the HTTP request when that secret
-dependency was enabled during the production MVP proof.
+model generation. For the `chat_completions` API type, configure ElevenLabs
+with the base URL ending in `/api/v1`; ElevenLabs appends
+`/chat/completions` itself. Supplying the full endpoint silently produces a
+duplicated `/chat/completions/chat/completions` request path.
 
 Conditional server-only Twilio variables—required only if M9 proves that the application itself must call Twilio REST APIs:
 

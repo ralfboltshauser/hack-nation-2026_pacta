@@ -42,7 +42,8 @@ function systemTools(): ElevenLabs.BuiltInToolsInput {
 
 function customLlm(url: string): ElevenLabs.CustomLlm {
   return {
-    url: `${url}/api/v1/chat/completions`,
+    // ElevenLabs appends /chat/completions for the chat_completions API type.
+    url: `${url}/api/v1`,
     modelId: "pacta",
     apiType: "chat_completions",
   };
@@ -189,7 +190,7 @@ async function enforceCapabilityOnlyCustomLlm(
             prompt: {
               llm: "custom-llm",
               custom_llm: {
-                url: `${url}/api/v1/chat/completions`,
+                url: `${url}/api/v1`,
                 model_id: "pacta",
                 api_key: null,
                 api_type: "chat_completions",
@@ -230,7 +231,8 @@ async function main() {
       JSON.stringify(
         {
           mode: "dry-run",
-          endpoint: `${url}/api/v1/chat/completions`,
+          configuredCustomLlmUrl: `${url}/api/v1`,
+          resolvedEndpoint: `${url}/api/v1/chat/completions`,
           agents: {
             customer: customer
               ? { agentId: customer.agentId, operation: "update" }
@@ -272,7 +274,8 @@ async function main() {
     JSON.stringify(
       {
         mode: "applied",
-        endpoint: `${url}/api/v1/chat/completions`,
+        configuredCustomLlmUrl: `${url}/api/v1`,
+        resolvedEndpoint: `${url}/api/v1/chat/completions`,
         ELEVENLABS_CUSTOMER_AGENT_ID: customerResult.agentId,
         ELEVENLABS_SUPPLIER_AGENT_ID: supplierResult.agentId,
         operations: {
