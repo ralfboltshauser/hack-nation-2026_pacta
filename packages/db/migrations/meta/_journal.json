@@ -57,6 +57,13 @@
       "when": 1784449580063,
       "tag": "0007_round_pepper_potts",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784470800000,
+      "tag": "0008_use_case_party_roles",
+      "breakpoints": true
     }
   ]
 }

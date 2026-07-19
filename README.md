@@ -171,6 +171,7 @@ pnpm e2e:safe
 - [`docs/call-flow.md`](docs/call-flow.md) — canonical product lifecycle and invariants
 - [`docs/decisions/0002-native-elevenlabs-milestone-tools.md`](docs/decisions/0002-native-elevenlabs-milestone-tools.md) — accepted native agent/tool architecture
 - [`docs/architecture/database-schema.md`](docs/architecture/database-schema.md) — authoritative state and persistence model
+- [`docs/architecture/crm-schema.md`](docs/architecture/crm-schema.md) — per-use-case customer and supplier CRM foundation
 - [`docs/architecture/use-case-configuration.md`](docs/architecture/use-case-configuration.md) — domain-neutral configuration contract
 - [`docs/implementation-plan.md`](docs/implementation-plan.md) — verified and pending milestones
 

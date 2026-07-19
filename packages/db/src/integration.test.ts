@@ -10,6 +10,7 @@ import {
   sessionActions,
   sessionEvents,
   sessions,
+  useCasePartyRoles,
   useCaseConfigVersions,
   useCases,
   workspaces,
@@ -23,6 +24,7 @@ integration("Postgres invariants", () => {
   let workspaceId: string;
   let sessionId: string;
   let configVersionId: string;
+  let useCaseId: string;
 
   beforeAll(async () => {
     ({ db, client } = createDatabase(process.env.TEST_DATABASE_URL));
@@ -35,6 +37,7 @@ integration("Postgres invariants", () => {
       .insert(useCases)
       .values({ workspaceId, key: "integration", displayName: "Integration" })
       .returning();
+    useCaseId = useCase!.id;
     const [config] = await db
       .insert(useCaseConfigVersions)
       .values({
@@ -81,6 +84,58 @@ integration("Postgres invariants", () => {
       .from(useCaseConfigVersions)
       .where(eq(useCaseConfigVersions.id, configVersionId));
     expect(persisted?.document).toEqual({});
+  });
+
+  it("scopes CRM roles to one use case and workspace", async () => {
+    const [supplier] = await db
+      .insert(parties)
+      .values({
+        workspaceId,
+        displayName: "Reusable supplier",
+        roleKeys: ["supplier"],
+      })
+      .returning();
+
+    await db.insert(useCasePartyRoles).values({
+      workspaceId,
+      useCaseId,
+      partyId: supplier!.id,
+      roleKey: "supplier",
+      relationshipData: { accountOwner: "integration" },
+    });
+
+    await expect(
+      db.insert(useCasePartyRoles).values({
+        workspaceId,
+        useCaseId,
+        partyId: supplier!.id,
+        roleKey: "supplier",
+      }),
+    ).rejects.toBeDefined();
+
+    const [otherWorkspace] = await db
+      .insert(workspaces)
+      .values({
+        slug: `other-${crypto.randomUUID()}`,
+        name: "Other workspace",
+      })
+      .returning();
+    const [foreignParty] = await db
+      .insert(parties)
+      .values({
+        workspaceId: otherWorkspace!.id,
+        displayName: "Foreign supplier",
+      })
+      .returning();
+
+    await expect(
+      db.insert(useCasePartyRoles).values({
+        workspaceId,
+        useCaseId,
+        partyId: foreignParty!.id,
+        roleKey: "supplier",
+      }),
+    ).rejects.toBeDefined();
   });
 
   it("allocates committed per-session event sequences under concurrency", async () => {

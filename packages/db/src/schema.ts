@@ -146,6 +146,57 @@ export const parties = pgTable(
   ],
 );
 
+/**
+ * Mutable CRM membership for a party within a stable use case.
+ *
+ * This deliberately references `use_cases`, not an immutable config version:
+ * config versions define business semantics, while this table defines the
+ * current customer/supplier roster that operators may change over time.
+ */
+export const useCasePartyRoles = pgTable(
+  "use_case_party_roles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    useCaseId: uuid("use_case_id")
+      .notNull()
+      .references(() => useCases.id),
+    partyId: uuid("party_id")
+      .notNull()
+      .references(() => parties.id),
+    roleKey: text("role_key").notNull(),
+    status: text("status").notNull().default("active"),
+    relationshipData: document("relationship_data"),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("use_case_party_roles_membership_uidx").on(
+      table.useCaseId,
+      table.partyId,
+      table.roleKey,
+    ),
+    index("use_case_party_roles_roster_idx").on(
+      table.useCaseId,
+      table.roleKey,
+      table.status,
+    ),
+    index("use_case_party_roles_workspace_party_idx").on(
+      table.workspaceId,
+      table.partyId,
+    ),
+    check(
+      "use_case_party_roles_role_check",
+      sql`${table.roleKey} in ('customer', 'supplier')`,
+    ),
+    check(
+      "use_case_party_roles_status_check",
+      sql`${table.status} in ('active', 'inactive')`,
+    ),
+  ],
+);
+
 export const sessions = pgTable(
   "sessions",
   {

@@ -187,6 +187,8 @@ erDiagram
     WORKSPACES ||--o{ USE_CASES : owns
     USE_CASES ||--o{ USE_CASE_CONFIG_VERSIONS : versions
     WORKSPACES ||--o{ PARTIES : owns
+    USE_CASES ||--o{ USE_CASE_PARTY_ROLES : scopes
+    PARTIES ||--o{ USE_CASE_PARTY_ROLES : receives
     WORKSPACES ||--o{ SESSIONS : owns
     USE_CASE_CONFIG_VERSIONS ||--o{ SESSIONS : pins
     PARTIES ||--o{ SESSIONS : customer
@@ -254,6 +256,12 @@ Unique: `(use_case_id, version)` and `(use_case_id, content_sha256)`. A database
 `id`, `workspace_id`, `role_keys text[]`, `display_name`, `phone_e164`, `timezone`, `locale`, `attributes jsonb`, `external_refs jsonb`, `created_at`, `updated_at`
 
 For the MVP, one party row is the person acting as customer or supplier. Do not add organizations and contacts until one supplier genuinely needs multiple people. `attributes` holds identity/discovery metadata, not generated behavioral profiles.
+
+#### `use_case_party_roles`
+
+`id`, `workspace_id`, `use_case_id`, `party_id`, `role_key`, `status`, `relationship_data jsonb`, `created_at`, `updated_at`
+
+Mutable CRM membership connects a reusable workspace party to a stable use case as a `customer` or `supplier`. It intentionally does not reference an immutable config version. See [`crm-schema.md`](crm-schema.md) for invariants, compatibility, and the management-layer plan.
 
 ### Session and intake
 
