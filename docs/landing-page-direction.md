@@ -44,7 +44,7 @@ final choice.
 A quiet serial rail shows the cost structurally without inventing a statistic:
 the same brief is explained, awaited, and transcribed once per supplier.
 
-### 3. The shared contract
+### 3. The confirmed source
 
 **Confirm once. Send the same truth everywhere.**
 
@@ -132,7 +132,7 @@ Every effect has a semantic job:
 | Motion                      | Product meaning                                   |
 | --------------------------- | ------------------------------------------------- |
 | Mascot gaze and cursor aura | Pacta is attentive and available                  |
-| Brief fragments assembling  | One request becomes a confirmed contract          |
+| Brief fragments assembling  | One request becomes a confirmed source of truth   |
 | Three lanes fanning out     | Independent conversations run in parallel         |
 | Offer chips returning       | Supplier results enter authoritative shared state |
 | Evidence gate resolving     | Only comparable facts become leverage             |
@@ -143,5 +143,7 @@ Every effect has a semantic job:
 - `/` becomes the narrative landing page.
 - `/negotiate` preserves the current session launcher and live console.
 - Legacy `/?session=...` links redirect to `/negotiate?session=...`.
-- The landing page owns its scroll container so existing full-viewport product
-  screens can keep their current overflow contract.
+- The landing route restores unsmoothed native document scrolling through a
+  route-scoped CSS override, while existing full-viewport product screens keep
+  their locked overflow contract. Keyboard scrolling remains immediate even
+  though scene state is still scroll-linked.
