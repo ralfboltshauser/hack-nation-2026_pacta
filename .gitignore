@@ -37,3 +37,4 @@ experiments/**/bin/
 .env
 .env.*
 !.env.example
+.vercel
