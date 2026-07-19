@@ -34,6 +34,9 @@ export function buildOutboundConversationInitiationClientData(input: {
       "Custom LLM outbound calls require context and a brain token.",
     );
   return {
+    conversationConfigOverride: {
+      conversation: { textOnly: false },
+    },
     ...(input.runtime === "custom_llm"
       ? {
           customLlmExtraBody: {

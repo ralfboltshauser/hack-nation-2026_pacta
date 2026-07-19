@@ -30,7 +30,7 @@ const request = {
 };
 
 describe("ElevenLabs protocol", () => {
-  it("omits every Custom LLM authority field from native outbound calls", () => {
+  it("forces voice while omitting Custom LLM authority from native outbound calls", () => {
     expect(
       buildOutboundConversationInitiationClientData({
         runtime: "native_tools",
@@ -44,7 +44,31 @@ describe("ElevenLabs protocol", () => {
         brainToken: "secret",
         dynamicVariables: { party_name: "Customer" },
       }),
-    ).toEqual({ dynamicVariables: { party_name: "Customer" } });
+    ).toEqual({
+      conversationConfigOverride: {
+        conversation: { textOnly: false },
+      },
+      dynamicVariables: { party_name: "Customer" },
+    });
+  });
+
+  it("forces voice for Custom LLM outbound calls", () => {
+    expect(
+      buildOutboundConversationInitiationClientData({
+        runtime: "custom_llm",
+        context: {
+          workspace_id: request.elevenlabs_extra_body.workspace_id,
+          session_id: request.elevenlabs_extra_body.session_id,
+          conversation_id: request.elevenlabs_extra_body.conversation_id,
+          purpose: "customer_intake",
+        },
+        brainToken: "secret",
+      }),
+    ).toMatchObject({
+      conversationConfigOverride: {
+        conversation: { textOnly: false },
+      },
+    });
   });
 
   it("parses Pacta context and fingerprints key-order independently", () => {
