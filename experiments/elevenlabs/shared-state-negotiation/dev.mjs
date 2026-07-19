@@ -136,7 +136,7 @@ async function main() {
   console.log(`Local dashboard:  http://127.0.0.1:${port}`);
   console.log(`Tunnel dashboard: ${publicUrl}`);
   console.log(`ElevenLabs agent: ${state.agentName} (${state.agentId})`);
-  console.log("Run `npm run prove` in another terminal for the automated two-session proof.");
+  console.log("Run `pnpm prove` in another terminal for the automated two-session proof.");
   console.log("Press Ctrl+C to stop the local server and tunnel.\n");
 
   await new Promise(() => {});

@@ -114,7 +114,7 @@ async function waitForMarket(predicate, description) {
 async function main() {
   const runtime = await readRuntimeState();
   if (!runtime?.agentId || !runtime?.publicUrl) {
-    throw new Error("The demo is not running/configured. Start it with npm run dev first.");
+    throw new Error("The demo is not running/configured. Start it with pnpm dev first.");
   }
 
   const health = await fetch(`${localBaseUrl}/healthz`).catch(() => null);

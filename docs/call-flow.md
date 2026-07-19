@@ -7,7 +7,7 @@ Last updated: 2026-07-19
 
 This document defines the end-to-end customer and supplier conversation lifecycle for one negotiation session. It is the canonical product-flow companion to the configuration contract in [`architecture/use-case-configuration.md`](architecture/use-case-configuration.md) and the runtime/schema details in [`decisions/0002-native-elevenlabs-milestone-tools.md`](decisions/0002-native-elevenlabs-milestone-tools.md) and [`architecture/database-schema.md`](architecture/database-schema.md). The superseded Custom LLM documents remain rollback references only.
 
-The flow is use-case agnostic. “Job,” “supplier,” and “offer” are configured concepts. The electrician scenario in the [UI exploration](../ui-explorations/agent-call-orchestrator/README.md) and freight scenario in the challenge materials are fixtures, not engine behavior.
+The flow is use-case agnostic. “Job,” “supplier,” and “offer” are configured concepts. The electrician scenario in the [UI prototype](../prototypes/agent-call-orchestrator/README.md) and freight scenario in the challenge materials are fixtures, not engine behavior.
 
 ## Participants
 
@@ -162,6 +162,26 @@ The leverage loop is a validated milestone-and-state process, not arbitrary agen
 
 The [shared-state negotiation experiment](../experiments/elevenlabs/shared-state-negotiation/README.md) proves this propagation between two active ElevenLabs conversations at tool/turn boundaries. It also proves an important guard: when insurance scope became different, the system stopped using headline price as leverage. It does **not** prove mid-utterance injection, PSTN concurrency, or five-way calling.
 
+### Adaptive counterparty conversation strategy
+
+Conversation tactics adapt only from observable behavior in the current supplier transcript:
+
+1. The agent starts with a neutral, brief evidence-gathering strategy.
+2. When a finalized supplier turn directly supports a covered tactic, the agent calls `classify_negotiator_style` with one fixed type and an exact transcript excerpt.
+3. The server rejects the call if the excerpt is not present in a supplier turn. Accepted classifications are revisioned in `negotiations.data` and emit `negotiation.counterparty_style_classified`.
+4. The tool result and every later `get_negotiation_state` response return the active fixed playbook. A later contradictory supplier statement may create a new classification revision.
+5. The label remains internal. It describes a working conversation tactic for this negotiation, not the person's identity or a reusable personality profile.
+
+The covered strategies are:
+
+| Working type                 | Direct evidence                                                                       | Agent adjustment                                                                                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tough_negotiator`           | Refusal, brush-off, or firm-position resistance                                       | Reduce friction, use short closed questions, explain the immediate value exchange, and seek one concrete concession without mirroring aggression. |
+| `lowballer_with_hidden_fees` | Headline price with deferred, omitted, conditional, or hedged costs or scope          | Stop bargaining on the headline, make every configured inclusion and exclusion explicit, then negotiate only the firm all-in comparable offer.    |
+| `hard_sell_upseller`         | Pressure or urgency used to redirect the confirmed request toward upgrades or bundles | Re-anchor to the confirmed baseline, price it separately, isolate optional increments, and require a concrete validity deadline.                  |
+
+Classification never permits invented leverage, silent scope changes, premature offer submission, or disclosure of competing supplier identity.
+
 ### Delivery and anti-spam rules
 
 - Every state response references its source event/revision and target conversation.
@@ -303,6 +323,7 @@ session.started
 session.status_changed
 job.revision_created
 job.confirmed
+negotiation.counterparty_style_classified
 supplier.added
 conversation.planned
 conversation.initiated

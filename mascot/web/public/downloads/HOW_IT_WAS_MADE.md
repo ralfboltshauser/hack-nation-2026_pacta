@@ -341,7 +341,7 @@ call:
 
 ```bash
 cd mascot/web
-npm run process-audio
+pnpm process-audio
 ```
 
 Generate replacement source files only from a server/local shell. This spends
@@ -349,9 +349,9 @@ API credits and intentionally overwrites the checked-in generations:
 
 ```bash
 test -n "$ELEVENLABS_API_KEY"
-npm run generate-audio -- --force
+pnpm generate-audio -- --force
 node scripts/generate-audio.mjs --candidates --force
-npm run process-audio
+pnpm process-audio
 ```
 
 The generation script refuses to overwrite existing source generations unless
@@ -383,14 +383,14 @@ Run the website:
 
 ```bash
 cd web
-npm install
-npm run dev
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
 Create a production build:
 
 ```bash
-npm run build
+pnpm build
 ```
 
 ## 9. A reusable prompt recipe

@@ -26,7 +26,7 @@ No database, Twilio number, enterprise monitoring endpoint, ngrok account, or Cl
 
 ## External effects
 
-`npm run dev`:
+`pnpm dev`:
 
 1. Downloads the official `cloudflared` Linux binary into the gitignored `bin/` directory if necessary.
 2. Starts the local dashboard on port `8787` and creates an ephemeral public tunnel.
@@ -40,11 +40,11 @@ The API key is read server-side from the repository-root `.env`; it is never sen
 
 ```bash
 cd experiments/elevenlabs/shared-state-negotiation
-npm install
-npm run dev
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
-Keep that terminal open. The command prints both the local dashboard URL and the current `trycloudflare.com` URL. A Quick Tunnel URL changes each time, so always start through `npm run dev`; it updates the existing tool URLs automatically.
+Keep that terminal open. The command prints both the local dashboard URL and the current `trycloudflare.com` URL. A Quick Tunnel URL changes each time, so always start through `pnpm dev`; it updates the existing tool URLs automatically.
 
 ### Persistent service on `ralfs-ubuntu`
 
@@ -72,10 +72,10 @@ Typed carrier messages are rendered immediately in the local transcript and dedu
 
 ## Automated pass/fail proof
 
-With `npm run dev` still running, use a second terminal:
+With `pnpm dev` still running, use a second terminal:
 
 ```bash
-npm run prove
+pnpm prove
 ```
 
 The proof passes only if:
@@ -96,7 +96,7 @@ The proof passes only if:
 After stopping the demo:
 
 ```bash
-npm run restore
+pnpm restore
 ```
 
 This restores the exact conversation configuration saved before the experiment and deletes the two demo tools. It refuses to act if the selected agent's identity no longer matches the saved state.

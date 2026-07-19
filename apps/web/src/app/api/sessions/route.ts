@@ -59,8 +59,7 @@ export async function POST(request: Request) {
         phoneE164: parsed.data.customer.phoneE164,
       },
       suppliers: parsed.data.suppliers.map((supplierInput, index) => ({
-        displayName:
-          supplierInput.displayName ?? `Supplier ${index + 1}`,
+        displayName: supplierInput.displayName ?? `Supplier ${index + 1}`,
         phoneE164: supplierInput.phoneE164,
       })),
       data: { demoPublic: true },

@@ -139,9 +139,7 @@ describe.skipIf(!databaseUrl)("native submit-confirmed-job", () => {
     expect(revisions).toHaveLength(1);
     expect(revisions[0]?.data).toEqual(job);
     expect(confirmations).toHaveLength(1);
-    expect(confirmations[0]?.statement).toBe(
-      "Yes, I confirm this exact job.",
-    );
+    expect(confirmations[0]?.statement).toBe("Yes, I confirm this exact job.");
     expect(events.map((event) => event.eventType).sort()).toEqual([
       "job.confirmed",
       "job.revision_created",

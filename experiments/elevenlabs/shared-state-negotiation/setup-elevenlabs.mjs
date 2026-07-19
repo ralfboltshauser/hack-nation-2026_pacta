@@ -2,7 +2,7 @@ import { configureElevenLabs } from "./lib/elevenlabs.mjs";
 
 const publicUrl = process.argv[2] ?? process.env.PUBLIC_URL;
 if (!publicUrl) {
-  console.error("Usage: npm run setup -- https://your-public-tunnel.example");
+  console.error("Usage: pnpm setup -- https://your-public-tunnel.example");
   process.exit(1);
 }
 

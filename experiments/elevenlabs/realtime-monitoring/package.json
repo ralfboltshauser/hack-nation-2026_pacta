@@ -1,5 +1,5 @@
 {
-  "name": "@negotiator/experiment-elevenlabs-realtime-monitoring",
+  "name": "@pacta/experiment-elevenlabs-realtime-monitoring",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,4 +10,3 @@
     "ws": "^8.18.3"
   }
 }
-

@@ -68,7 +68,12 @@ let activeKey = "freight";
 let cycleTimer = null;
 
 function fieldMarkup(fields) {
-  return fields.map(([label, value]) => `<div class="config-field"><span>${label}</span><strong>${value}</strong></div>`).join("");
+  return fields
+    .map(
+      ([label, value]) =>
+        `<div class="config-field"><span>${label}</span><strong>${value}</strong></div>`,
+    )
+    .join("");
 }
 
 function renderConfig(key, animate = true) {
@@ -77,19 +82,32 @@ function renderConfig(key, animate = true) {
   activeKey = key;
   if (animate) showcase.classList.add("switching");
 
-  window.setTimeout(() => {
-    showcase.dataset.market = key;
-    document.querySelector("#configTitle").textContent = config.title;
-    document.querySelector("#jobName").textContent = config.jobName;
-    document.querySelector("#offerName").textContent = config.offerName;
-    document.querySelector("#jobFields").innerHTML = fieldMarkup(config.job);
-    document.querySelector("#offerFields").innerHTML = fieldMarkup(config.offer);
-    document.querySelector("#configBadge").textContent = config.badge;
-    document.querySelector("#configBehavior").textContent = config.behavior;
-    document.querySelectorAll("[data-config]").forEach((button) => button.classList.toggle("active", button.dataset.config === key));
-    document.querySelector("#configMascot")?.dispatchEvent(new CustomEvent("pacta:play", { detail: { action: config.action } }));
-    requestAnimationFrame(() => showcase.classList.remove("switching"));
-  }, animate ? 160 : 0);
+  window.setTimeout(
+    () => {
+      showcase.dataset.market = key;
+      document.querySelector("#configTitle").textContent = config.title;
+      document.querySelector("#jobName").textContent = config.jobName;
+      document.querySelector("#offerName").textContent = config.offerName;
+      document.querySelector("#jobFields").innerHTML = fieldMarkup(config.job);
+      document.querySelector("#offerFields").innerHTML = fieldMarkup(
+        config.offer,
+      );
+      document.querySelector("#configBadge").textContent = config.badge;
+      document.querySelector("#configBehavior").textContent = config.behavior;
+      document
+        .querySelectorAll("[data-config]")
+        .forEach((button) =>
+          button.classList.toggle("active", button.dataset.config === key),
+        );
+      document
+        .querySelector("#configMascot")
+        ?.dispatchEvent(
+          new CustomEvent("pacta:play", { detail: { action: config.action } }),
+        );
+      requestAnimationFrame(() => showcase.classList.remove("switching"));
+    },
+    animate ? 160 : 0,
+  );
 }
 
 function nextConfig() {

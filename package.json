@@ -7,20 +7,25 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "build": "turbo build",
-    "dev": "turbo dev --parallel",
+    "build": "turbo build --filter='./apps/*' --filter='./packages/*' --filter=@pacta/mascot",
+    "dev": "turbo dev --filter=@pacta/web",
+    "dev:mascot": "pnpm --filter @pacta/mascot dev",
+    "dev:prototype": "pnpm --filter @pacta/prototype-orchestrator dev",
+    "pitch": "python3 presentations/pacta-case-pitch/serve.py",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "turbo lint",
-    "test": "turbo test",
+    "lint": "turbo lint --filter='./apps/*' --filter='./packages/*'",
+    "test": "turbo test --filter='./apps/*' --filter='./packages/*'",
     "test:e2e": "pnpm --filter @pacta/web test:e2e",
-    "typecheck": "turbo typecheck",
+    "typecheck": "turbo typecheck --filter='./apps/*' --filter='./packages/*'",
+    "verify": "pnpm config:check && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "db:generate": "pnpm --filter @pacta/db generate",
     "db:migrate": "pnpm --filter @pacta/db migrate",
     "config:check": "pnpm --filter @pacta/use-case-config check",
     "call:one-message": "node --env-file=.env --experimental-strip-types scripts/call-one-message.mts",
     "e2e:safe": "tsx scripts/safe-e2e.ts",
-    "elevenlabs:provision": "tsx scripts/provision-elevenlabs.ts"
+    "elevenlabs:provision": "tsx scripts/provision-elevenlabs.ts",
+    "elevenlabs:provision:native": "tsx scripts/provision-elevenlabs-native.ts"
   },
   "devDependencies": {
     "@elevenlabs/client": "1.15.0",
