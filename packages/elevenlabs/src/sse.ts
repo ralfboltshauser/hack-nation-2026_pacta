@@ -155,6 +155,7 @@ export function createDeferredChatCompletionSse(
     model?: string;
     created?: number;
     bufferText?: string;
+    heartbeatMs?: number;
     toolCallId?: string;
   },
 ) {
@@ -162,6 +163,7 @@ export function createDeferredChatCompletionSse(
   const model = options?.model ?? "pacta";
   const created = options?.created ?? Math.floor(Date.now() / 1000);
   const bufferText = options?.bufferText ?? "";
+  const heartbeatMs = options?.heartbeatMs ?? 1_000;
   const toolCallId = options?.toolCallId ?? `call_${crypto.randomUUID()}`;
 
   return new ReadableStream<Uint8Array>({
@@ -183,6 +185,16 @@ export function createDeferredChatCompletionSse(
           }),
         );
       }
+      const heartbeat =
+        heartbeatMs > 0
+          ? setInterval(() => {
+              try {
+                controller.enqueue(encoder.encode(": keep-alive\n\n"));
+              } catch {
+                clearInterval(heartbeat);
+              }
+            }, heartbeatMs)
+          : undefined;
       try {
         const completion = await resolve();
         if (completion.type === "text") {
@@ -262,6 +274,7 @@ export function createDeferredChatCompletionSse(
         );
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
       } finally {
+        if (heartbeat) clearInterval(heartbeat);
         controller.close();
       }
     },

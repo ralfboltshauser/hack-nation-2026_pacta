@@ -142,6 +142,25 @@ describe("ElevenLabs protocol", () => {
     await reader.cancel();
   });
 
+  it("keeps a deferred SSE connection alive without transcript content", async () => {
+    const completion = Promise.withResolvers<{
+      type: "text";
+      text: string;
+    }>();
+    const stream = createDeferredChatCompletionSse(() => completion.promise, {
+      id: "chatcmpl_heartbeat",
+      created: 1,
+      model: "pacta",
+      heartbeatMs: 1,
+    });
+    const reader = stream.getReader();
+    const first = new TextDecoder().decode((await reader.read()).value);
+    expect(first).toBe(": keep-alive\n\n");
+    expect(first).not.toContain("data:");
+    completion.resolve({ type: "text", text: "Done." });
+    await reader.cancel();
+  });
+
   it("extracts text from an ElevenLabs multimodal user turn", () => {
     const parsed = chatCompletionRequestSchema.parse({
       ...request,
