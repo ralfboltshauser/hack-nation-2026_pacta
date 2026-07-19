@@ -189,7 +189,21 @@ export function createDeferredChatCompletionSse(
         heartbeatMs > 0
           ? setInterval(() => {
               try {
-                controller.enqueue(encoder.encode(": keep-alive\n\n"));
+                controller.enqueue(
+                  event({
+                    id,
+                    object: "chat.completion.chunk",
+                    created,
+                    model,
+                    choices: [
+                      {
+                        index: 0,
+                        delta: { content: " " },
+                        finish_reason: null,
+                      },
+                    ],
+                  }),
+                );
               } catch {
                 clearInterval(heartbeat);
               }

@@ -142,7 +142,7 @@ describe("ElevenLabs protocol", () => {
     await reader.cancel();
   });
 
-  it("keeps a deferred SSE connection alive without transcript content", async () => {
+  it("continues the buffer pause with silent whitespace deltas", async () => {
     const completion = Promise.withResolvers<{
       type: "text";
       text: string;
@@ -155,8 +155,8 @@ describe("ElevenLabs protocol", () => {
     });
     const reader = stream.getReader();
     const first = new TextDecoder().decode((await reader.read()).value);
-    expect(first).toBe(": keep-alive\n\n");
-    expect(first).not.toContain("data:");
+    expect(first).toContain('"content":" "');
+    expect(first).toContain("data:");
     completion.resolve({ type: "text", text: "Done." });
     await reader.cancel();
   });
