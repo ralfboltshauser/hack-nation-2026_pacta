@@ -7,6 +7,10 @@ export type ChatCompletionToolCall = {
   arguments: Record<string, unknown>;
 };
 
+export type DeferredChatCompletion =
+  | { type: "text"; text: string }
+  | { type: "tool_call"; tool: ChatCompletionToolCall };
+
 function event(payload: unknown) {
   return encoder.encode(`data: ${JSON.stringify(payload)}\n\n`);
 }
@@ -138,6 +142,140 @@ export function createChatCompletionToolCallSse(
       );
       controller.enqueue(encoder.encode("data: [DONE]\n\n"));
       controller.close();
+    },
+  });
+}
+
+export function createDeferredChatCompletionSse(
+  resolve: () => Promise<DeferredChatCompletion>,
+  options?: {
+    id?: string;
+    model?: string;
+    created?: number;
+    bufferText?: string;
+    toolCallId?: string;
+  },
+) {
+  const id = options?.id ?? `chatcmpl_${crypto.randomUUID()}`;
+  const model = options?.model ?? "pacta";
+  const created = options?.created ?? Math.floor(Date.now() / 1000);
+  const bufferText = options?.bufferText ?? "One moment... ";
+  const toolCallId = options?.toolCallId ?? `call_${crypto.randomUUID()}`;
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      controller.enqueue(
+        event({
+          id,
+          object: "chat.completion.chunk",
+          created,
+          model,
+          choices: [
+            { index: 0, delta: { role: "assistant" }, finish_reason: null },
+          ],
+        }),
+      );
+      if (bufferText) {
+        controller.enqueue(
+          event({
+            id,
+            object: "chat.completion.chunk",
+            created,
+            model,
+            choices: [
+              {
+                index: 0,
+                delta: { content: bufferText },
+                finish_reason: null,
+              },
+            ],
+          }),
+        );
+      }
+      try {
+        const completion = await resolve();
+        if (completion.type === "text") {
+          if (completion.text) {
+            controller.enqueue(
+              event({
+                id,
+                object: "chat.completion.chunk",
+                created,
+                model,
+                choices: [
+                  {
+                    index: 0,
+                    delta: { content: completion.text },
+                    finish_reason: null,
+                  },
+                ],
+              }),
+            );
+          }
+          controller.enqueue(
+            event({
+              id,
+              object: "chat.completion.chunk",
+              created,
+              model,
+              choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+            }),
+          );
+        } else {
+          controller.enqueue(
+            event({
+              id,
+              object: "chat.completion.chunk",
+              created,
+              model,
+              choices: [
+                {
+                  index: 0,
+                  delta: {
+                    tool_calls: [
+                      {
+                        index: 0,
+                        id: toolCallId,
+                        type: "function",
+                        function: {
+                          name: completion.tool.name,
+                          arguments: JSON.stringify(completion.tool.arguments),
+                        },
+                      },
+                    ],
+                  },
+                  finish_reason: null,
+                },
+              ],
+            }),
+          );
+          controller.enqueue(
+            event({
+              id,
+              object: "chat.completion.chunk",
+              created,
+              model,
+              choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }],
+            }),
+          );
+        }
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+      } catch (error) {
+        controller.enqueue(
+          event({
+            error: {
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "The response stream failed.",
+              type: "server_error",
+            },
+          }),
+        );
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+      } finally {
+        controller.close();
+      }
     },
   });
 }

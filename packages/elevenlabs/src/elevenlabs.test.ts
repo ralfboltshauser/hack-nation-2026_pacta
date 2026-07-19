@@ -6,6 +6,7 @@ import {
   chatCompletionRequestSchema,
   createChatCompletionSse,
   createChatCompletionToolCallSse,
+  createDeferredChatCompletionSse,
   extractLastUserText,
   fingerprintChatCompletion,
   verifyPostCallWebhook,
@@ -74,6 +75,33 @@ describe("ElevenLabs protocol", () => {
     expect(body).toContain('\\"reason\\":\\"award_confirmed\\"');
     expect(body).toContain('"finish_reason":"tool_calls"');
     expect(body.endsWith("data: [DONE]\n\n")).toBe(true);
+  });
+
+  it("streams a buffer before deferred model work finishes", async () => {
+    const completion = Promise.withResolvers<{
+      type: "text";
+      text: string;
+    }>();
+    const stream = createDeferredChatCompletionSse(() => completion.promise, {
+      id: "chatcmpl_deferred",
+      created: 1,
+      model: "pacta",
+    });
+    const reader = stream.getReader();
+    const first = new TextDecoder().decode((await reader.read()).value);
+    const second = new TextDecoder().decode((await reader.read()).value);
+    expect(first).toContain('"role":"assistant"');
+    expect(second).toContain('"content":"One moment... "');
+
+    completion.resolve({ type: "text", text: "Done." });
+    let remainder = "";
+    for (;;) {
+      const next = await reader.read();
+      if (next.done) break;
+      remainder += new TextDecoder().decode(next.value);
+    }
+    expect(remainder).toContain('"content":"Done."');
+    expect(remainder.endsWith("data: [DONE]\n\n")).toBe(true);
   });
 
   it("extracts text from an ElevenLabs multimodal user turn", () => {
