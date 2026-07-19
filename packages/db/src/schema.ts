@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   check,
@@ -441,6 +442,72 @@ export const conversations = pgTable(
       .on(table.provider, table.providerCallId)
       .where(sql`${table.providerCallId} is not null`),
     uniqueIndex("conversations_brain_token_hash_uidx").on(table.brainTokenHash),
+  ],
+);
+
+export const partyMemoryObservations = pgTable(
+  "party_memory_observations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id),
+    partyId: uuid("party_id")
+      .notNull()
+      .references(() => parties.id),
+    useCaseId: uuid("use_case_id")
+      .notNull()
+      .references(() => useCases.id),
+    sourceConversationId: uuid("source_conversation_id")
+      .notNull()
+      .references(() => conversations.id),
+    categoryKey: text("category_key").notNull(),
+    memoryKey: text("memory_key").notNull(),
+    content: text("content").notNull(),
+    evidenceStatement: text("evidence_statement").notNull(),
+    observationFingerprint: text("observation_fingerprint").notNull(),
+    supersedesObservationId: uuid("supersedes_observation_id").references(
+      (): AnyPgColumn => partyMemoryObservations.id,
+    ),
+    observedAt: timestamp("observed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("party_memory_observations_fingerprint_uidx").on(
+      table.observationFingerprint,
+    ),
+    index("party_memory_observations_lookup_idx").on(
+      table.partyId,
+      table.useCaseId,
+      table.observedAt,
+    ),
+    index("party_memory_observations_source_idx").on(
+      table.sourceConversationId,
+    ),
+    check(
+      "party_memory_observations_category_check",
+      sql`${table.categoryKey} in ('communication_preference', 'commercial_preference', 'operating_capability', 'relationship_fact')`,
+    ),
+    check(
+      "party_memory_observations_key_check",
+      sql`${table.memoryKey} ~ '^[a-z][a-z0-9_]{2,63}$'`,
+    ),
+    check(
+      "party_memory_observations_content_check",
+      sql`char_length(${table.content}) between 1 and 500`,
+    ),
+    check(
+      "party_memory_observations_evidence_check",
+      sql`char_length(${table.evidenceStatement}) between 1 and 1000`,
+    ),
+    check(
+      "party_memory_observations_fingerprint_check",
+      sql`${table.observationFingerprint} ~ '^[0-9a-f]{64}$'`,
+    ),
   ],
 );
 

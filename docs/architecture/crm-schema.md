@@ -1,6 +1,6 @@
 # Use-case CRM schema
 
-Status: database foundation implemented; management API and UI intentionally deferred
+Status: database foundation and evidence-backed conversation memory implemented; management UI deferred
 
 ## Outcome
 
@@ -31,6 +31,8 @@ erDiagram
     USE_CASES ||--o{ USE_CASE_CONFIG_VERSIONS : versions
     USE_CASES ||--o{ USE_CASE_PARTY_ROLES : scopes
     PARTIES ||--o{ USE_CASE_PARTY_ROLES : receives
+    USE_CASES ||--o{ PARTY_MEMORY_OBSERVATIONS : scopes
+    PARTIES ||--o{ PARTY_MEMORY_OBSERVATIONS : remembers
     PARTIES ||--o{ SESSIONS : historical_customer
     PARTIES ||--o{ SESSION_SUPPLIERS : historical_supplier
 ```
@@ -61,30 +63,44 @@ sessions.
 
 ## Compatibility with the current root flow
 
-This migration is additive. It does not change `sessions`, `session_suppliers`,
-the session creation endpoint, or `/`. The root page may continue accepting
-ad-hoc phone numbers and creating session-local party rows exactly as before.
-Requiring CRM selection now would break that flow, so roster enforcement is
-explicitly deferred until the management UI and session picker are shipped
-together.
+The root page continues accepting ad-hoc phone numbers and creating
+session-local party rows exactly as before. The session endpoint additionally
+accepts a CRM `partyId`; that path requires an active customer/supplier role for
+the selected use case and reuses the durable party ID. Requiring CRM selection
+would break the demo flow, so the future picker remains optional.
+
+## Conversation memory
+
+`party_memory_observations` stores immutable facts learned through the
+`store_party_memory` ElevenLabs tool. The server verifies that the exact
+evidence quote occurs in the latest supplier turn, derives party, workspace,
+and use case from the provider conversation, authenticates the expiring
+conversation capability supplied through an ElevenLabs dynamic tool field,
+deduplicates retries, and links a correction to the prior observation with the
+same stable key. Only the capability hash is stored.
+
+Before a later call or supplier preview starts, Pacta selects the newest
+observation for each key, limits the result to eight facts, and passes the JSON
+through ElevenLabs' `party_memory` dynamic variable. Supplier prompts delimit
+it as untrusted historical context; memory cannot override instructions or
+become current quote truth.
 
 ## Build plan after this database foundation
 
-1. Add repository functions to list active parties by use case and role, create
-   or update a party, assign a role, and mark a role inactive.
-2. Add authenticated workspace-scoped CRM endpoints. Keep party identity edits
+1. Add authenticated workspace-scoped CRM endpoints. Keep party identity edits
    separate from role membership edits.
-3. Build a management screen with use-case, role, and status filters. Editing
+2. Build a management screen with use-case, role, status, and evidence-backed
+   memory filters. Editing
    `relationship_data` should be driven by validated CRM field definitions,
    not an unrestricted JSON editor.
-4. Add an optional CRM picker to session creation while preserving an
-   “ad-hoc contact” path. The selected IDs must be copied into `sessions` and
-   `session_suppliers` so later CRM edits cannot rewrite session history.
-5. Backfill role rows for useful existing parties only after a deterministic
+3. Add an optional CRM picker to the root page using the already-supported
+   `partyId` session input while preserving the ad-hoc contact path.
+4. Backfill role rows for useful existing parties only after a deterministic
    deduplication rule exists. Do not infer identity from phone number alone
    without an operator-reviewed collision policy.
-6. Before enabling RLS again, add workspace-member policies for the new table
-   and test reads and writes as anonymous, authenticated, and service roles.
+5. Before enabling RLS again, add workspace-member policies for the CRM and
+   memory tables and test reads and writes as anonymous, authenticated, and
+   service roles.
 
 ## Deliberate non-decisions
 
@@ -97,3 +113,5 @@ together.
   sourced from a separately versioned CRM-fields contract; silently trusting
   arbitrary JSON would move correctness out of the database without replacing
   it elsewhere.
+- Derived behavioral summaries and memory snapshots are deferred. The current
+  prompt context contains only bounded, directly evidenced observations.

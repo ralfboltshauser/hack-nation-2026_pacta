@@ -9,25 +9,30 @@ import { z } from "zod";
 
 import { runSessionAction } from "@/server/orchestration/calls";
 
-const customer = z
+const partyInput = z
   .object({
+    partyId: z.string().uuid().optional(),
     displayName: z.string().min(1).max(100).optional(),
-    phoneE164: z.string().regex(/^\+[1-9]\d{7,14}$/),
+    phoneE164: z
+      .string()
+      .regex(/^\+[1-9]\d{7,14}$/)
+      .optional(),
   })
-  .strict();
-const supplier = z
-  .object({
-    displayName: z.string().min(1).max(100).optional(),
-    phoneE164: z.string().regex(/^\+[1-9]\d{7,14}$/),
-  })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (Boolean(value.partyId) === Boolean(value.phoneE164))
+      context.addIssue({
+        code: "custom",
+        message: "Provide exactly one of CRM partyId or ad-hoc phoneE164.",
+      });
+  });
 const requestSchema = z
   .object({
     useCase: z
       .enum(["freight_brokerage", "contractor_bids"])
       .default("freight_brokerage"),
-    customer,
-    suppliers: z.array(supplier).min(1).max(3),
+    customer: partyInput,
+    suppliers: z.array(partyInput).min(1).max(3),
   })
   .strict();
 
@@ -55,13 +60,20 @@ export async function POST(request: Request) {
       workspaceId: published.workspace.id,
       configVersionId: published.configVersion.id,
       customer: {
+        ...(parsed.data.customer.partyId
+          ? { partyId: parsed.data.customer.partyId }
+          : {}),
         displayName: parsed.data.customer.displayName ?? "Customer",
-        phoneE164: parsed.data.customer.phoneE164,
+        ...(parsed.data.customer.phoneE164
+          ? { phoneE164: parsed.data.customer.phoneE164 }
+          : {}),
       },
       suppliers: parsed.data.suppliers.map((supplierInput, index) => ({
-        displayName:
-          supplierInput.displayName ?? `Supplier ${index + 1}`,
-        phoneE164: supplierInput.phoneE164,
+        ...(supplierInput.partyId ? { partyId: supplierInput.partyId } : {}),
+        displayName: supplierInput.displayName ?? `Supplier ${index + 1}`,
+        ...(supplierInput.phoneE164
+          ? { phoneE164: supplierInput.phoneE164 }
+          : {}),
       })),
       data: { demoPublic: true },
     });

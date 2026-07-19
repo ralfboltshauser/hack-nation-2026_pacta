@@ -10,6 +10,7 @@ import {
 import { and, eq } from "drizzle-orm";
 
 import { outboundCallsEnabled } from "@/server/orchestration/calls";
+import { loadConversationPartyMemoryPromptContext } from "@/server/crm/party-memory";
 import { hasSessionMembership } from "@/server/sessions/authorization";
 
 export const runtime = "nodejs";
@@ -89,9 +90,11 @@ export async function POST(
       apiKey,
       agentId: agent.agentId,
     });
-    const brainToken =
-      agent.runtime === "custom_llm" ? createBrainToken() : null;
-    // The DB hash is non-null for legacy rollback; epoch expiry revokes it in native mode.
+    const conversationToken = createBrainToken();
+    const partyMemory = await loadConversationPartyMemoryPromptContext(
+      db,
+      row.conversation.id,
+    );
     await db
       .update(conversations)
       .set({
@@ -99,22 +102,22 @@ export async function POST(
         channel: "text_chat",
         provider: "elevenlabs",
         status: "initiating",
-        ...(brainToken
-          ? {
-              brainTokenHash: hash(brainToken),
-              brainTokenExpiresAt: new Date(Date.now() + 3 * 60 * 60_000),
-            }
-          : { brainTokenExpiresAt: new Date(0) }),
+        brainTokenHash: hash(conversationToken),
+        brainTokenExpiresAt: new Date(Date.now() + 3 * 60 * 60_000),
       })
       .where(eq(conversations.id, conversationId));
     return Response.json(
       buildSignedTextSessionPayload({
         signedUrl,
         runtime: agent.runtime,
-        dynamicVariables: { party_name: row.party.displayName },
+        dynamicVariables: {
+          party_name: row.party.displayName,
+          party_memory: partyMemory,
+          party_memory_token: conversationToken,
+        },
         customLlmExtraBody: {
           contract_version: "1",
-          brain_token: brainToken,
+          brain_token: conversationToken,
           workspace_id: row.session.workspaceId,
           session_id: row.session.id,
           conversation_id: row.conversation.id,

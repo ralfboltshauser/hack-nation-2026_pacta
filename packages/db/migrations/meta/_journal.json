@@ -64,6 +64,13 @@
       "when": 1784470800000,
       "tag": "0008_use_case_party_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784473800000,
+      "tag": "0009_party_memory_observations",
+      "breakpoints": true
     }
   ]
 }

@@ -55,6 +55,30 @@ function hasTool(request: ChatCompletionRequest, name: string) {
   );
 }
 
+function toolWasCalledAfterLatestUser(
+  request: ChatCompletionRequest,
+  name: string,
+) {
+  const lastUserIndex = request.messages.findLastIndex(
+    (message) => message.role === "user",
+  );
+  return request.messages.slice(lastUserIndex + 1).some((message) => {
+    if (message.role === "tool" && message.name === name) return true;
+    return (
+      message.role === "assistant" &&
+      message.tool_calls?.some((candidate) => {
+        if (!candidate || typeof candidate !== "object") return false;
+        const fn = (candidate as Record<string, unknown>).function;
+        return Boolean(
+          fn &&
+          typeof fn === "object" &&
+          (fn as Record<string, unknown>).name === name,
+        );
+      })
+    );
+  });
+}
+
 function hasVerifiedTerminalState(
   begun: Awaited<ReturnType<typeof beginBrainTurn>>,
   output: BrainOutput,
@@ -103,6 +127,25 @@ function completionResult(
       tool: {
         name: "skip_turn",
         arguments: { reason: "No new material update is ready." },
+      },
+    };
+  }
+  if (
+    begun.snapshot.purpose !== "customer_intake" &&
+    output.supplierMemory &&
+    hasTool(request, "store_party_memory") &&
+    !toolWasCalledAfterLatestUser(request, "store_party_memory")
+  ) {
+    return {
+      type: "tool_call" as const,
+      tool: {
+        name: "store_party_memory",
+        arguments: {
+          category: output.supplierMemory.category,
+          memory_key: output.supplierMemory.memoryKey,
+          content: output.supplierMemory.content,
+          evidence_quote: output.supplierMemory.evidenceQuote,
+        },
       },
     };
   }
