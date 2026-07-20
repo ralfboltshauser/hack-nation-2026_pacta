@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildOutboundConversationInitiationClientData,
+  buildTwilioAudioConfig,
   chatCompletionRequestSchema,
   createChatCompletionSse,
   createChatCompletionToolCallSse,
@@ -30,6 +31,13 @@ const request = {
 };
 
 describe("ElevenLabs protocol", () => {
+  it("uses Twilio's native audio format in both directions", () => {
+    expect(buildTwilioAudioConfig("voice_test")).toMatchObject({
+      asr: { userInputAudioFormat: "ulaw_8000" },
+      tts: { agentOutputAudioFormat: "ulaw_8000" },
+    });
+  });
+
   it("forces voice while omitting Custom LLM authority from native outbound calls", () => {
     expect(
       buildOutboundConversationInitiationClientData({

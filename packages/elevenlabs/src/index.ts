@@ -3,4 +3,5 @@ export * from "./client";
 export * from "./contracts";
 export * from "./runtime";
 export * from "./sse";
+export * from "./telephony";
 export * from "./webhooks";

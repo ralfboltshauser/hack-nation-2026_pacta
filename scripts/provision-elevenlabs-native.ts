@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { ElevenLabsClient, type ElevenLabs } from "@elevenlabs/elevenlabs-js";
+import { buildTwilioAudioConfig } from "@pacta/elevenlabs";
 
 import {
   negotiatorStylePromptGuide,
@@ -15,6 +16,7 @@ import {
 } from "../packages/use-case-config/src/index";
 
 const MODEL = "gemini-3.1-flash-lite" as const;
+const VOICE_ID = "cjVigY5qzO86Huf0OWal";
 const CUSTOMER_AGENT_NAME = "Pacta Native Preview — Customer Intake";
 const SUPPLIER_AGENT_NAME = "Pacta Native Preview — Supplier Negotiator";
 const CONFIRM_JOB_TOOL_NAME = "submit_confirmed_job";
@@ -336,6 +338,7 @@ function customerConfig(
   voice: boolean,
 ): ElevenLabs.ConversationalConfig {
   return {
+    ...buildTwilioAudioConfig(VOICE_ID),
     conversation: {
       textOnly: !voice,
       maxDurationSeconds: voice ? 300 : 900,
@@ -374,8 +377,7 @@ function supplierConfig(
   voice: boolean,
 ): ElevenLabs.ConversationalConfig {
   return {
-    // The v0 preview is deliberately text-only. Phone enablement is a separate,
-    // explicit operation after safe E2E gates pass.
+    ...buildTwilioAudioConfig(VOICE_ID),
     conversation: {
       textOnly: !voice,
       maxDurationSeconds: voice ? 300 : 900,
@@ -526,6 +528,11 @@ async function upsertAgent(
 async function main() {
   const apply = process.argv.includes("--apply");
   const voice = process.argv.includes("--voice");
+  const text = process.argv.includes("--text");
+  if (voice === text)
+    throw new Error(
+      "Choose exactly one provisioning channel: --voice or --text.",
+    );
   const apiKey = required("ELEVENLABS_API_KEY");
   const baseUrl = publicBaseUrl();
   const loaded = await loadConfig();
@@ -876,7 +883,7 @@ async function main() {
     ),
     upsertTool(client, existingPartyMemoryTool, storePartyMemoryRequest),
   ]);
-  const versionDescription = `Pacta native preview ${loaded.config.key}@${loaded.config.version} ${loaded.contentSha256.slice(0, 12)}`;
+  const versionDescription = `Pacta native preview ${voice ? "voice/ulaw_8000" : "text"} ${loaded.config.key}@${loaded.config.version} ${loaded.contentSha256.slice(0, 12)}`;
   const [customer, supplier] = await Promise.all([
     upsertAgent(client, existingCustomer, {
       name: CUSTOMER_AGENT_NAME,
@@ -924,7 +931,9 @@ async function main() {
         ELEVENLABS_NATIVE_CUSTOMER_AGENT_ID: customer.agentId,
         ELEVENLABS_NATIVE_SUPPLIER_AGENT_ID: supplier.agentId,
         agents: { customer, supplier },
-        next: "Set only the ELEVENLABS_NATIVE_* IDs, deploy, and opt in with PACTA_ELEVENLABS_RUNTIME=native_tools for safe text testing.",
+        next: voice
+          ? "Verify a consenting Twilio call records ASR input, a user transcript, model generation, and response TTS."
+          : "Use the returned agent IDs only for explicit text-mode testing.",
       },
       null,
       2,
